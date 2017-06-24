@@ -19,11 +19,11 @@ all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-	THE SOFTWARE.
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  THE SOFTWARE.
 *******************************************************************************/
 
 #include "MonsterMotorShield.h"
@@ -41,20 +41,20 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 
 // Lid states
 enum {
-	CLOSED,
-	OPENING,
-	STOPPED,
-	CLOSING,
-	WAITING,
-	OPEN,
+  CLOSED,
+  OPENING,
+  STOPPED,
+  CLOSING,
+  WAITING,
+  OPEN,
 } state;
 
 enum {
-	BTN_NONE,
-	BTN_A_OPEN,
-	BTN_A_CLOSE,
-	BTN_B_OPEN,
-	BTN_B_CLOSE,
+  BTN_NONE,
+  BTN_A_OPEN,
+  BTN_A_CLOSE,
+  BTN_B_OPEN,
+  BTN_B_CLOSE,
 };
 
 int buttonLimits[] = {92, 303, 518, 820};
@@ -64,48 +64,51 @@ Motor motorA(0);
 Motor motorB(1);
 
 
-int readButton() {
+int readButton()
+{
   int val = analogRead(BUTTONS);
 
-  for (int i=0; i<NBUTTONS; i++) {
+  for (int i = 0; i < NBUTTONS; i++) {
     if (val < buttonLimits[i]) {
-      return i+1;
+      return i + 1;
     }
   }
   return 0;
 }
 
 
-void setup() {
+void setup()
+{
   Serial.begin(9600);
   pinMode(LED, OUTPUT);
 }
 
 
-void loop() {
-	delay(100);
+void loop()
+{
+  delay(100);
 
-	switch(readButton()) {
-		case BTN_A_OPEN:
-			motorA.run(1, 1000);
-			digitalWrite(LED, HIGH);
-			break;
-		case BTN_A_CLOSE:
-			motorA.run(0, 1000);
-			digitalWrite(LED, HIGH);
-			break;
-		case BTN_B_OPEN:
-			motorB.run(1, 1000);
-			digitalWrite(LED, HIGH);
-			break;
-		case BTN_B_CLOSE:
-			motorB.run(0, 1000);
-			digitalWrite(LED, HIGH);
-			break;
-		default:
-			motorA.stop();
-			motorB.stop();
-			digitalWrite(LED, LOW);
-			break;
-	}
+  switch(readButton()) {
+  case BTN_A_OPEN:
+    motorA.run(1, 1000);
+    digitalWrite(LED, HIGH);
+    break;
+  case BTN_A_CLOSE:
+    motorA.run(0, 1000);
+    digitalWrite(LED, HIGH);
+    break;
+  case BTN_B_OPEN:
+    motorB.run(1, 1000);
+    digitalWrite(LED, HIGH);
+    break;
+  case BTN_B_CLOSE:
+    motorB.run(0, 1000);
+    digitalWrite(LED, HIGH);
+    break;
+  default:
+    motorA.stop();
+    motorB.stop();
+    digitalWrite(LED, LOW);
+    break;
+  }
 }

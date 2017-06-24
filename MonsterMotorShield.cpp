@@ -23,28 +23,28 @@ int enpin[2] = {0, 1}; // EN: Status of switches output (Analog pin)
 
 Motor::Motor(uint8_t n)
 {
-	// _nmotor can be only 0 or 1
-	_nmotor = (n > 0);
-	pinMode(inApin[_nmotor], OUTPUT);
-	pinMode(inBpin[_nmotor], OUTPUT);
-	stop();
+  // _nmotor can be only 0 or 1
+  _nmotor = (n > 0);
+  pinMode(inApin[_nmotor], OUTPUT);
+  pinMode(inBpin[_nmotor], OUTPUT);
+  stop();
 }
 
 void Motor::run(bool dir, int pwm)
 {
-	digitalWrite(inApin[_nmotor], dir);
-	digitalWrite(inBpin[_nmotor], !dir);
-	analogWrite(pwmpin[_nmotor], pwm);
+  digitalWrite(inApin[_nmotor], dir);
+  digitalWrite(inBpin[_nmotor], !dir);
+  analogWrite(pwmpin[_nmotor], pwm);
 }
 
 void Motor::stop()
 {
-	digitalWrite(inApin[_nmotor], LOW);
-	digitalWrite(inBpin[_nmotor], LOW);
-	analogWrite(pwmpin[_nmotor], 0);
+  digitalWrite(inApin[_nmotor], LOW);
+  digitalWrite(inBpin[_nmotor], LOW);
+  analogWrite(pwmpin[_nmotor], 0);
 }
 
 bool Motor::isRunning()
 {
-	return digitalRead(inApin[_nmotor]) || digitalRead(inBpin[_nmotor]);
+  return digitalRead(inApin[_nmotor]) || digitalRead(inBpin[_nmotor]);
 }

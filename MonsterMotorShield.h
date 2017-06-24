@@ -15,12 +15,12 @@ Copyright (C) 2017 Juan Menendez <juanmb@gmail.com>
 
 class Motor {
 public:
-	Motor(uint8_t nmotor);
-	void run(bool dir, int pwm);
-	void stop();
-	bool isRunning();
+  Motor(uint8_t nmotor);
+  void run(bool dir, int pwm);
+  void stop();
+  bool isRunning();
 private:
-	uint8_t _nmotor;
+  uint8_t _nmotor;
 };
 
 #endif
