@@ -48,3 +48,8 @@ bool Motor::isRunning()
 {
   return digitalRead(inApin[_nmotor]) || digitalRead(inBpin[_nmotor]);
 }
+
+int Motor::readCurrent()
+{
+  return analogRead(cspin[_nmotor]);
+}

@@ -27,6 +27,7 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 *******************************************************************************/
 
 #include "MonsterMotorShield.h"
+#include "shutter.h"
 
 // Pin definitions
 #define LED      13
@@ -39,16 +40,6 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 
 #define NBUTTONS 4
 
-// Lid states
-enum {
-  CLOSED,
-  OPENING,
-  STOPPED,
-  CLOSING,
-  WAITING,
-  OPEN,
-} state;
-
 enum {
   BTN_NONE,
   BTN_A_OPEN,
@@ -58,10 +49,12 @@ enum {
 };
 
 int buttonLimits[] = {92, 303, 518, 820};
-
+int btn_prev = 0;
 
 Motor motorA(0);
 Motor motorB(1);
+Shutter shutterA(&motorA, SW_A1, SW_A2, SW_INTER);
+Shutter shutterB(&motorB, SW_B1, SW_B2, SW_INTER);
 
 
 int readButton()
@@ -86,29 +79,27 @@ void setup()
 
 void loop()
 {
-  delay(100);
+  int btn = readButton();
 
-  switch(readButton()) {
-  case BTN_A_OPEN:
-    motorA.run(1, 1000);
-    digitalWrite(LED, HIGH);
-    break;
-  case BTN_A_CLOSE:
-    motorA.run(0, 1000);
-    digitalWrite(LED, HIGH);
-    break;
-  case BTN_B_OPEN:
-    motorB.run(1, 1000);
-    digitalWrite(LED, HIGH);
-    break;
-  case BTN_B_CLOSE:
-    motorB.run(0, 1000);
-    digitalWrite(LED, HIGH);
-    break;
-  default:
-    motorA.stop();
-    motorB.stop();
-    digitalWrite(LED, LOW);
-    break;
+  if (btn != btn_prev) {
+    switch(btn) {
+    case BTN_A_OPEN:
+      shutterA.open();
+      break;
+    case BTN_A_CLOSE:
+      shutterA.close();
+      break;
+    case BTN_B_OPEN:
+      shutterB.open();
+      break;
+    case BTN_B_CLOSE:
+      shutterB.close();
+      break;
+    }
   }
+
+  btn_prev = btn;
+  shutterA.update();
+  shutterB.update();
+  delay(100);
 }

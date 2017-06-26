@@ -8,7 +8,7 @@
 # 	https://github.com/sudar/Arduino-Makefile
 
 BOARD_TAG    = uno
-ARDUINO_LIBS = AccelStepper
+ARDUINO_LIBS = SoftwareSerial SerialCommand
 ARDUINO_LIBS += Wire
 ARDUINO_PORT = /dev/ttyACM0
 
