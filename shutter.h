@@ -18,7 +18,6 @@ typedef enum state {
   ST_OPENING,
   ST_STOPPED,
   ST_CLOSING,
-  ST_WAITING,
   ST_OPEN,
 } state;
 
@@ -33,13 +32,15 @@ typedef enum action {
 class Shutter {
 public:
   Shutter(Motor *motor, int sw1, int sw2, int swInt);
+  Shutter(Motor *motor, int sw1, int sw2);
   void open();
   void close();
   void stop();
   void update();
-  state readState();
+  state getState();
 private:
   void initState();
+  bool interference();
   Motor *_motor;
   state _state;
   action _action;

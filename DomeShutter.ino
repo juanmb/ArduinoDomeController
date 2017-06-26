@@ -53,7 +53,7 @@ int btn_prev = 0;
 
 Motor motorA(0);
 Motor motorB(1);
-Shutter shutterA(&motorA, SW_A1, SW_A2, SW_INTER);
+Shutter shutterA(&motorA, SW_A1, SW_A2);
 Shutter shutterB(&motorB, SW_B1, SW_B2, SW_INTER);
 
 
