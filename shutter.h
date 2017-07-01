@@ -32,7 +32,6 @@ typedef enum action {
 class Shutter {
 public:
   Shutter(Motor *motor, int sw1, int sw2, int swInt);
-  Shutter(Motor *motor, int sw1, int sw2);
   void open();
   void close();
   void stop();

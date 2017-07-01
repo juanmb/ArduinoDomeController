@@ -31,11 +31,11 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 
 // Pin definitions
 #define LED      13
-#define SW_A1    2
-#define SW_A2    3
+#define SW_A1    12
+#define SW_A2    11
 #define SW_B1    10
-#define SW_B2    11
-#define SW_INTER 12
+#define SW_B2    3
+#define SW_INTER 2
 #define BUTTONS A4
 
 #define NBUTTONS 4
@@ -53,7 +53,7 @@ int btn_prev = 0;
 
 Motor motorA(0);
 Motor motorB(1);
-Shutter shutterA(&motorA, SW_A1, SW_A2);
+Shutter shutterA(&motorA, SW_A1, SW_A2, -1);
 Shutter shutterB(&motorB, SW_B1, SW_B2, SW_INTER);
 
 
@@ -101,5 +101,9 @@ void loop()
   btn_prev = btn;
   shutterA.update();
   shutterB.update();
+
+  Serial.print(shutterA.getState());
+  Serial.print(shutterB.getState());
+  Serial.println("");
   delay(100);
 }

@@ -27,6 +27,7 @@ Motor::Motor(uint8_t n)
   _nmotor = (n > 0);
   pinMode(inApin[_nmotor], OUTPUT);
   pinMode(inBpin[_nmotor], OUTPUT);
+  pinMode(pwmpin[_nmotor], OUTPUT);
   stop();
 }
 

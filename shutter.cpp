@@ -11,13 +11,13 @@ Copyright (C) 2017 Juan Menendez <juanmb@gmail.com>
 
 #define MOTOR_OPEN 0
 #define MOTOR_CLOSE 1
-#define SPEED 1024
+#define SPEED 1023
 
 /* Shutter constructor.
  * motor: pointer to an instance of Motor
- * sw1: Limit switch (closed)
- * sw2: Limit switch (fully open)
- * swInt: Interference switch
+ * sw1: Limit switch (high when the shutter is closed)
+ * sw2: Limit switch (low when the shutter is fully open)
+ * swInt: Interference switch (high when the shutters are interfering each other)
  */
 Shutter::Shutter(Motor *motor, int sw1, int sw2, int swInt)
 {
@@ -28,12 +28,6 @@ Shutter::Shutter(Motor *motor, int sw1, int sw2, int swInt)
   _swInt = swInt;
   _action = DO_NONE;
   initState();
-}
-
-
-Shutter::Shutter(Motor *motor, int sw1, int sw2)
-{
-  Shutter(motor, sw1, sw2, -1);
 }
 
 
@@ -65,7 +59,7 @@ void Shutter::initState()
 {
   if (digitalRead(_sw1))
     _state = ST_CLOSED;
-  else if (digitalRead(_sw2))
+  else if (!digitalRead(_sw2))
     _state = ST_OPEN;
   else
     _state = ST_STOPPED;
@@ -75,7 +69,8 @@ void Shutter::initState()
 // Detect mechanical interfence between the two shutters
 bool Shutter::interference()
 {
-  return _swInt >= 0 && digitalRead(_swInt);
+  //return (_swInt >= 0) ? digitalRead(_swInt) : 0;
+  return (_swInt >= 0) && digitalRead(_swInt);
 }
 
 
@@ -86,27 +81,30 @@ void Shutter::update()
 
   switch (_state) {
   case ST_CLOSED:
-    if (_action == DO_OPEN) {
+    if (_action == DO_OPEN && !interference()) {
       _state = ST_OPENING;
       _motor->run(MOTOR_OPEN, SPEED);
     }
     break;
   case ST_OPENING:
-    if (digitalRead(_sw2)) {
+    if (!digitalRead(_sw2)) {
       _state = ST_OPEN;
       _motor->stop();
-    } else if (_action == DO_STOP || _action == DO_OPEN || _action == DO_CLOSE) {
+    } else if (_action == DO_STOP || _action == DO_OPEN ||
+               _action == DO_CLOSE || interference()) {
       _state = ST_STOPPED;
       _motor->stop();
     }
     break;
   case ST_STOPPED:
-    if (_action == DO_OPEN) {
-      _state = ST_OPENING;
-      _motor->run(MOTOR_OPEN, SPEED);
-    } else if (_action == DO_CLOSE) {
-      _state = ST_CLOSING;
-      _motor->run(MOTOR_CLOSE, SPEED);
+    if (!interference()) {
+      if (_action == DO_OPEN) {
+        _state = ST_OPENING;
+        _motor->run(MOTOR_OPEN, SPEED);
+      } else if (_action == DO_CLOSE) {
+        _state = ST_CLOSING;
+        _motor->run(MOTOR_CLOSE, SPEED);
+      }
     }
     break;
   case ST_CLOSING:
