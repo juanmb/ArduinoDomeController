@@ -1,0 +1,10 @@
+/build*/**
+/commTest/**/build*/**
+*.*~
+*~
+*.cpp~
+*.h~
+*.swp
+*_OLD*
+*ino_
+*.orig
