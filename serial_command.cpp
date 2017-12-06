@@ -17,7 +17,7 @@ SerialCommand::SerialCommand()
     bufPos = 0;
 }
 
-char SerialCommand::getCRC(char *cmd, uint8_t length)
+uint8_t SerialCommand::getCRC(uint8_t *cmd, uint8_t length)
 {
     char crc = 0;
 
@@ -27,7 +27,7 @@ char SerialCommand::getCRC(char *cmd, uint8_t length)
     return crc;
 }
 
-int SerialCommand::addCommand(const char id, uint8_t size, cbFunction function)
+int SerialCommand::addCommand(const uint8_t id, uint8_t size, cbFunction function)
 {
     if (nCommands >= MAX_COMMANDS) {
         return 1;
@@ -84,7 +84,7 @@ void SerialCommand::readSerial()
     }
 }
 
-void SerialCommand::sendResponse(char *cmd, uint8_t length)
+void SerialCommand::sendResponse(uint8_t *cmd, uint8_t length)
 {
     cmd[length - 1] = getCRC(cmd, length - 2);
 

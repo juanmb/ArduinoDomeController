@@ -17,11 +17,11 @@
 #define START 0x01  // Start byte
 
 
-typedef void (* cbFunction)(char*);
+typedef void (* cbFunction)(uint8_t*);
 
 
 typedef struct commandCallback {
-    char id;
+    uint8_t id;
     uint8_t size;
     cbFunction function;
 } commandCallback;
@@ -31,12 +31,12 @@ class SerialCommand {
 public:
     SerialCommand();
     void readSerial();
-    void sendResponse(char *, uint8_t);
-    int addCommand(const char, uint8_t, cbFunction);
+    void sendResponse(uint8_t *, uint8_t);
+    int addCommand(const uint8_t, uint8_t, cbFunction);
 private:
-    char getCRC(char *, uint8_t);
+    uint8_t getCRC(uint8_t*, uint8_t);
     commandCallback commandList[MAX_COMMANDS];
-    char buffer[MAX_CMD_SIZE];
+    uint8_t buffer[MAX_CMD_SIZE];
     cbFunction cmdFunction;
     int nCommands;
     int cmdSize;
