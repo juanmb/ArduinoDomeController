@@ -6,6 +6,7 @@
 
 *******************************************************************/
 
+#include <EEPROM.h>
 #include <SoftwareSerial.h>
 #include "serial_command.h"
 
@@ -48,7 +49,12 @@
 
 #define AZ_TOLERANCE    4       // Azimuth target tolerance in encoder ticks
 #define AZ_SLOW_RANGE   16      //
-#define AZ_TIMEOUT      30000   // Azimuth movement timeout
+#define AZ_TIMEOUT      30000   // Azimuth movement timeout (in ms)
+
+// EEPROM addresses
+#define ADDR_PARK_POS           0
+#define ADDR_TICKS_PER_TURN     2
+#define ADDR_PARK_ON_SHUTTER    4
 
 
 enum MotorSpeed { MOTOR_STOP, MOTOR_SLOW, MOTOR_FAST };
@@ -91,18 +97,19 @@ enum ShutterStatus {
 SoftwareSerial HC12(HC12_TX, HC12_RX); // Create Software Serial Port
 SerialCommand sCmd;
 
+bool park_on_shutter = false;
 bool home_reached = false;
-bool park_on_shutter = false;   // Park before closing the shutters
 uint8_t current_dir = DIR_CW;   // Current azimuth movement direction
+uint16_t park_pos = 0;          // Parking position
 uint16_t current_pos = 0;       // Current dome position
 uint16_t target_pos = 0;        // Target dome position
 uint16_t home_pos = 0;          // Home position
-uint16_t park_pos = 0;          // Parking position
 uint16_t ticks_per_turn = 360;  // Encoder ticks per dome revolution
 AzimuthStatus state = ST_IDLE;
 AzimuthEvent az_event = EVT_NONE;
 
 
+// Convert two bytes to a uint16_t value (big endian)
 uint16_t bytesToInt(uint8_t *data) {
     uint16_t out = data[0] & 0xff;
     out <<= 8;
@@ -110,9 +117,27 @@ uint16_t bytesToInt(uint8_t *data) {
     return out;
 }
 
+// Convert a uint16_t value to bytes (big endian)
 void intToBytes(uint16_t value, uint8_t *data) {
     data[0] = (value >> 8) & 0xff;
     data[1] = value & 0xff;
+}
+
+// Read a uint16_t value from EEPROM (little endian)
+uint16_t eepromReadUint16(int address)
+{
+    uint16_t value1 = EEPROM.read(address);
+    uint16_t value2 = EEPROM.read(address + 1);
+    return (value1 & 0xff) || ((value2 << 8) & 0xff00);
+}
+
+// Read a uint16_t value from EEPROM (little endian)
+void eepromWriteUint16(int address, uint16_t value)
+{
+    uint8_t value1 = value & 0xff;
+    uint8_t value2 = (value >> 8) & 0xff;
+    EEPROM.write(address, value1);
+    EEPROM.write(address + 1, value2);
 }
 
 
@@ -248,6 +273,9 @@ void cmdSetPark(uint8_t *cmd)
     park_on_shutter = cmd[3];
     park_pos = bytesToInt(cmd + 4);
 
+    EEPROM.write(ADDR_PARK_ON_SHUTTER, park_on_shutter);
+    eepromWriteUint16(ADDR_PARK_POS, park_pos);
+
     uint8_t resp[] = {START, 2, TO_COMPUTER | SETPARK_CMD, 0x00};
     sCmd.sendResponse(resp, 4);
 }
@@ -255,6 +283,7 @@ void cmdSetPark(uint8_t *cmd)
 void cmdSetTicks(uint8_t *cmd)
 {
     ticks_per_turn = bytesToInt(cmd + 3);
+    eepromWriteUint16(ADDR_TICKS_PER_TURN, ticks_per_turn);
 
     uint8_t resp[] = {START, 2, TO_COMPUTER | TICKS_CMD, 0x00};
     sCmd.sendResponse(resp, 4);
@@ -372,6 +401,10 @@ void setup()
     pinMode(MOTOR_CCW, OUTPUT);
 
     attachInterrupt(digitalPinToInterrupt(ENCODER1), encoderISR, CHANGE);
+
+    park_pos = eepromReadUint16(ADDR_PARK_POS);
+    park_on_shutter = EEPROM.read(ADDR_PARK_ON_SHUTTER);
+    ticks_per_turn = eepromReadUint16(ADDR_TICKS_PER_TURN);
 
     Serial.begin(19200);
     HC12.begin(9600);   // Open serial port to HC12
