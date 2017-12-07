@@ -1,10 +1,30 @@
-/******************************************************************
-    Author:     Juan Menendez Blanco    <juanmb@gmail.com>
+/*******************************************************************************
+ArduinoDomeController
+Azimuth control of an astronomical dome using Arduino
 
-    This code is part of the ArduinoDomeController project:
-        https://github.com/juanmb/ArduinoDomeController
 
-*******************************************************************/
+The MIT License
+
+Copyright (C) 2017 Juan Menendez <juanmb@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  THE SOFTWARE.
+*******************************************************************************/
 
 #include <EEPROM.h>
 #include <SoftwareSerial.h>
@@ -182,14 +202,22 @@ inline void setJog(bool enable)
 
 ShutterStatus getShutterStatus()
 {
-    HC12.println("status");
+    ShutterStatus st = SS_ERROR;
 
-    // TODO
-    //while (HC12.available() > 0) {
-        //delay(10);
-        //c = HC12.read();
-    //}
-    return SS_CLOSED;
+    for (int i=0; i<10; i++) {
+        HC12.println("stat");
+        delay(100);
+
+        if (HC12.available() > 0) {
+            char c = HC12.read() - '0';
+            if (c >= 0 && c <= SS_ERROR) {
+                st = (ShutterStatus)c;
+                break;
+            }
+        }
+    }
+
+    return st;
 }
 
 
@@ -203,10 +231,10 @@ void cmdAbortAzimuth(uint8_t *cmd)
 
 void cmdHomeAzimuth(uint8_t *cmd)
 {
+    current_dir = getDirection(current_pos, home_pos);
     az_event = EVT_HOME;
 
     uint8_t resp[] = {START, 2, TO_COMPUTER | HOME_CMD, 0x00};
-    current_dir = getDirection(current_pos, home_pos);
     sCmd.sendResponse(resp, 4);
 }
 
@@ -224,10 +252,10 @@ void cmdShutterCommand(uint8_t *cmd)
 {
     switch(cmd[3]) {
     case OPEN_SHUTTER:
-        HC12.println("open1");
+        HC12.println("open");
         break;
     case OPEN_UPPER_ONLY_SHUTTER:
-        HC12.println("open2");
+        HC12.println("open1");
         break;
     case CLOSE_SHUTTER:
         HC12.println("close");
