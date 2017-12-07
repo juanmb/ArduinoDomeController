@@ -12,7 +12,7 @@ Copyright (C) 2017 Juan Menendez <juanmb@gmail.com>
 
 #define MOTOR_OPEN 0
 #define MOTOR_CLOSE 1
-#define SPEED 1024
+#define SPEED 1023
 #define DEFAULT_TIMEOUT 30000 // shutter timeout (in ms)
 
 // Shutter constructor.

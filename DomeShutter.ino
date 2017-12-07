@@ -32,11 +32,11 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 
 // Pin definitions
 #define LED_ERR  13     // error LED
-#define SW_A1    2      // shutter closed switch
-#define SW_A2    3      // shutter open switch
+#define SW_A1    12     // shutter closed switch
+#define SW_A2    11     // shutter open switch
 #define SW_B1    10     // flap closed switch
-#define SW_B2    11     // flap open switch
-#define SW_INTER 12     // shutter interference detection switch
+#define SW_B2    3      // flap open switch
+#define SW_INTER 2      // shutter interference detection switch
 #define BUTTONS A4      // analog input for reading the buttons
 
 #define NBUTTONS 4
