@@ -1,2 +1,4 @@
-# ArduinoDomeShutter
-Dome shutter controller for an amateur astronomical observatory using Arduino
+ArduinoDomeShutter
+==================
+
+Dome shutter controller for an astronomical observatory using Arduino.

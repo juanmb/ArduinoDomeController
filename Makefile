@@ -15,4 +15,4 @@ ARDUINO_PORT = /dev/ttyACM0
 include /usr/share/arduino/Arduino.mk
 
 format:
-	astyle --style=stroustrup -p -c -s2 *.cpp *.h *.ino
+	astyle --style=stroustrup -p -c -s4 *.cpp *.h *.ino
