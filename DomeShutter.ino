@@ -26,6 +26,7 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
   THE SOFTWARE.
 *******************************************************************************/
 
+#include <avr/wdt.h>
 #include "MonsterMotorShield.h"
 #include "SerialCommand.h"
 #include "shutter.h"
@@ -41,8 +42,10 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 
 #define NBUTTONS 4
 
-#define SHUTTER_TIMEOUT 30000
-#define FLAP_TIMEOUT 6000
+// Timeouts in ms
+#define COMMAND_TIMEOUT 5000    // Max. time from last command
+#define SHUTTER_TIMEOUT 3000    // Max. time the shutter takes to open/close
+#define FLAP_TIMEOUT 3000       // Max. time the flap takes to open/close
 
 enum {
     BTN_NONE,
@@ -52,18 +55,18 @@ enum {
     BTN_B_CLOSE,
 };
 
-int buttonLimits[] = {92, 303, 518, 820};
-
 Motor motorA(0);
 Motor motorB(1);
-Shutter shutter(&motorA, SW_A1, SW_A2, SHUTTER_TIMEOUT);
+Shutter shutter(&motorA, SW_A1, SW_A2, -1, SHUTTER_TIMEOUT);
 Shutter flap(&motorB, SW_B1, SW_B2, SW_INTER, FLAP_TIMEOUT);
 SerialCommand sCmd;
+unsigned long lastCmdTime = 0;
 
 // Detect a pressed button by reading an analog input.
 // Every button puts a different voltage at the input.
 int readButton()
 {
+    int buttonLimits[] = {92, 303, 518, 820};
     int val = analogRead(BUTTONS);
 
     for (int i = 0; i < NBUTTONS; i++) {
@@ -75,46 +78,67 @@ int readButton()
 }
 
 void cmdOpenShutter() {
+    lastCmdTime = millis();
     shutter.open();
 }
 
 void cmdOpenBoth()
 {
+    lastCmdTime = millis();
     shutter.open();
     flap.open();
 }
 
 void cmdClose()
 {
+    lastCmdTime = millis();
     shutter.close();
     flap.close();
 }
 
 void cmdAbort()
 {
+    lastCmdTime = millis();
     shutter.abort();
     flap.abort();
 }
 
 void cmdExit()
 {
-    //TODO: implement watchdog
+    lastCmdTime = 0;
     shutter.close();
     flap.close();
 }
 
 void cmdStatus()
 {
-    State st = shutter.getState();
-    if (flap.getState() == ST_ERROR)
-        st = ST_ERROR;
+    lastCmdTime = millis();
 
-    Serial.write("st");
+    State sst = shutter.getState();
+    State fst = flap.getState();
+    State st = ST_ABORTED;
+
+    if (sst == ST_ERROR || fst == ST_ERROR)
+        st = ST_ERROR;
+    else if (sst == ST_OPENING || fst == ST_OPENING ||
+            sst == ST_OPENING_BLOCKED || fst == ST_OPENING_BLOCKED)
+        st = ST_OPENING;
+    else if (sst == ST_CLOSING || fst == ST_CLOSING ||
+            sst == ST_CLOSING_BLOCKED || fst == ST_CLOSING_BLOCKED)
+        st = ST_CLOSING;
+    else if (sst == ST_OPEN || fst == ST_OPEN)
+        st = ST_OPEN;
+    else if (sst == ST_CLOSED && fst == ST_CLOSED)
+        st = ST_CLOSED;
+
     Serial.write('0' + st);
 }
 
 void setup()
 {
+    wdt_disable();
+    wdt_enable(WDTO_1S);
+
     pinMode(LED_ERR, OUTPUT);
 
     // Map serial commands to functions
@@ -126,6 +150,10 @@ void setup()
     sCmd.addCommand("stat", cmdStatus);
 
     Serial.begin(9600);
+
+    digitalWrite(LED_ERR, HIGH);
+    delay(200);
+    digitalWrite(LED_ERR, LOW);
 }
 
 
@@ -133,8 +161,15 @@ void loop()
 {
     int btn = readButton();
     static int btn_prev = 0;
+    static int btn_count = 0;
 
-    if (btn != btn_prev) {
+    if (btn && (btn == btn_prev))
+        btn_count++;
+    else
+        btn_count = 0;
+    btn_prev = btn;
+
+    if (btn_count == 80) {
         switch(btn) {
         case BTN_A_OPEN:
             shutter.open();
@@ -150,13 +185,19 @@ void loop()
             break;
         }
     }
-    btn_prev = btn;
 
     shutter.update();
     flap.update();
     sCmd.readSerial();
 
-    digitalWrite(LED_ERR,
-            (shutter.getState() == ST_ERROR) ||
-            (flap.getState() == ST_ERROR));
+    int err = (shutter.getState() == ST_ERROR) || (flap.getState() == ST_ERROR);
+    digitalWrite(LED_ERR, err);
+
+    // Close the dome if time from last command > COMMAND_TIMEOUT
+    if (lastCmdTime && (millis() - lastCmdTime > COMMAND_TIMEOUT)) {
+        shutter.close();
+        flap.close();
+    }
+
+    wdt_reset();
 }

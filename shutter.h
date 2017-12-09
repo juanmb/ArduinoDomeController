@@ -20,6 +20,8 @@ enum State {
     ST_CLOSING,
     ST_ABORTED,
     ST_ERROR,
+    ST_OPENING_BLOCKED,
+    ST_CLOSING_BLOCKED,
 };
 
 
@@ -34,8 +36,6 @@ class Shutter {
 public:
     Shutter(Motor *motor, int closedSwitch, int openSwitch,
             int interSwitch, unsigned long timeout);
-    Shutter(Motor *motor, int closedSwitch, int openSwitch,
-            unsigned long timeout);
     void open();
     void close();
     void abort();

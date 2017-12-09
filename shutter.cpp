@@ -27,16 +27,9 @@ Shutter::Shutter(Motor *motorPtr, int closedSwitch, int openSwitch,
     swClosed = closedSwitch;
     swOpen = openSwitch;
     swInter = interSwitch;
-    nextAction = DO_NONE;
     runTimeout = timeout;
+    nextAction = DO_NONE;
     initState();
-}
-
-
-Shutter::Shutter(Motor *motor, int closedSwitch, int openSwitch,
-        unsigned long timeout)
-{
-    Shutter(motor, closedSwitch, openSwitch, -1, timeout);
 }
 
 
@@ -59,9 +52,9 @@ State Shutter::getState() { return state; }
 
 
 // Detect mechanical interfence between the two shutters
-bool Shutter::interference()
+inline bool Shutter::interference()
 {
-    return swInter >= 0 && digitalRead(swInter);
+    return swInter < 0 ? false : digitalRead(swInter);
 }
 
 
@@ -79,16 +72,24 @@ void Shutter::update()
     switch (state) {
     case ST_CLOSED:
         if (action == DO_OPEN) {
-            t0 = millis();
-            state = ST_OPENING;
-            motor->run(MOTOR_OPEN, SPEED);
+            if (interference())
+                state = ST_OPENING_BLOCKED;
+            else {
+                t0 = millis();
+                state = ST_OPENING;
+                motor->run(MOTOR_OPEN, SPEED);
+            }
         }
         break;
     case ST_OPEN:
         if (action == DO_CLOSE && !interference()) {
-            t0 = millis();
-            state = ST_CLOSING;
-            motor->run(MOTOR_CLOSE, SPEED);
+            if (interference())
+                state = ST_CLOSING_BLOCKED;
+            else {
+                t0 = millis();
+                state = ST_CLOSING;
+                motor->run(MOTOR_CLOSE, SPEED);
+            }
         }
         break;
     case ST_ABORTED:
@@ -103,30 +104,58 @@ void Shutter::update()
             motor->run(MOTOR_CLOSE, SPEED);
         }
         break;
+    case ST_OPENING_BLOCKED:
+        if (!interference()) {
+            t0 = millis();
+            state = ST_OPENING;
+            motor->run(MOTOR_OPEN, SPEED);
+        }
+        break;
+    case ST_CLOSING_BLOCKED:
+        if (!interference()) {
+            t0 = millis();
+            state = ST_CLOSING;
+            motor->run(MOTOR_CLOSE, SPEED);
+        }
+        break;
     case ST_OPENING:
         if (digitalRead(swOpen)) {
             state = ST_OPEN;
-            motor->stop();
-        } else if (action == DO_ABORT || action == DO_OPEN || action == DO_CLOSE) {
+            motor->abort();
+        } else if (interference()) {
+            state = ST_OPENING_BLOCKED;
+            motor->abort();
+        } else if (action == DO_ABORT || action == DO_OPEN) {
             state = ST_ABORTED;
-            motor->stop();
+            motor->abort();
+        } else if (action == DO_CLOSE) {
+            state = ST_CLOSING;
+            motor->run(MOTOR_CLOSE, SPEED);
         } else if (millis() - t0 > runTimeout) {
             state = ST_ERROR;
-            motor->stop();
+            motor->abort();
         }
         break;
     case ST_CLOSING:
         if (digitalRead(swClosed)) {
             state = ST_CLOSED;
-            motor->stop();
-        } else if (action == DO_ABORT || action == DO_OPEN ||
-                   action == DO_CLOSE || interference()) {
+            motor->abort();
+        } else if (interference()) {
+            state = ST_CLOSING_BLOCKED;
+            motor->abort();
+        } else if (action == DO_ABORT || action == DO_CLOSE) {
             state = ST_ABORTED;
-            motor->stop();
+            motor->abort();
+        } else if (action == DO_OPEN) {
+            state = ST_OPENING;
+            motor->run(MOTOR_OPEN, SPEED);
         } else if (millis() - t0 > runTimeout) {
             state = ST_ERROR;
-            motor->stop();
+            motor->abort();
         }
         break;
+    default:
+        motor->abort();
+        state = ST_ERROR;
     }
 }

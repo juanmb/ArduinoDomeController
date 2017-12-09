@@ -45,6 +45,13 @@ void Motor::stop()
     analogWrite(pwmpin[_nmotor], 0);
 }
 
+void Motor::abort()
+{
+    digitalWrite(inApin[_nmotor], HIGH);
+    digitalWrite(inBpin[_nmotor], HIGH);
+    analogWrite(pwmpin[_nmotor], 0);
+}
+
 bool Motor::isRunning()
 {
     return digitalRead(inApin[_nmotor]) || digitalRead(inBpin[_nmotor]);
