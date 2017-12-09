@@ -27,6 +27,7 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 *******************************************************************************/
 
 #include <EEPROM.h>
+#include <avr/wdt.h>
 #include <SoftwareSerial.h>
 #include "serial_command.h"
 
@@ -131,16 +132,15 @@ AzimuthEvent az_event = EVT_NONE;
 
 // Convert two bytes to a uint16_t value (big endian)
 uint16_t bytesToInt(uint8_t *data) {
-    uint16_t out = data[0] & 0xff;
-    out <<= 8;
-    out |= data[1] & 0xff;
-    return out;
+    uint16_t value1 = data[1];
+    uint16_t value2 = data[0];
+    return (value1 & 0xff) | ((value2 << 8) & 0xff00);
 }
 
 // Convert a uint16_t value to bytes (big endian)
 void intToBytes(uint16_t value, uint8_t *data) {
-    data[0] = (value >> 8) & 0xff;
     data[1] = value & 0xff;
+    data[0] = (value >> 8) & 0xff;
 }
 
 // Read a uint16_t value from EEPROM (little endian)
@@ -148,7 +148,7 @@ uint16_t eepromReadUint16(int address)
 {
     uint16_t value1 = EEPROM.read(address);
     uint16_t value2 = EEPROM.read(address + 1);
-    return (value1 & 0xff) || ((value2 << 8) & 0xff00);
+    return (value1 & 0xff) | ((value2 << 8) & 0xff00);
 }
 
 // Read a uint16_t value from EEPROM (little endian)
@@ -200,20 +200,22 @@ inline void setJog(bool enable)
     digitalWrite(MOTOR_JOG, enable);
 }
 
-ShutterStatus getShutterStatus()
-{
+ShutterStatus getShutterStatus() {
     ShutterStatus st = SS_ERROR;
 
-    for (int i=0; i<10; i++) {
+    HC12.flush();
+    for (int i=0; i<4; i++) {
         HC12.println("stat");
         delay(100);
 
-        if (HC12.available() > 0) {
-            char c = HC12.read() - '0';
-            if (c >= 0 && c <= SS_ERROR) {
-                st = (ShutterStatus)c;
-                break;
-            }
+        char c = 0;
+        while (HC12.available() > 0) {
+            c = HC12.read();
+        }
+
+        if (c >= '0' && c <= ('0' + SS_ERROR)) {
+            st = (ShutterStatus)(c - '0');
+            break;
         }
     }
 
@@ -411,9 +413,11 @@ void encoderISR()
     }
 }
 
-
 void setup()
 {
+    wdt_disable();
+    wdt_enable(WDTO_2S);
+
     sCmd.addCommand(ABORT_CMD, 2, cmdAbortAzimuth);
     sCmd.addCommand(HOME_CMD, 2, cmdHomeAzimuth);
     sCmd.addCommand(GOTO_CMD, 5, cmdGotoAzimuth);
@@ -436,6 +440,7 @@ void setup()
 
     Serial.begin(19200);
     HC12.begin(9600);   // Open serial port to HC12
+
 }
 
 
@@ -443,4 +448,5 @@ void loop()
 {
     sCmd.readSerial();
     updateAzimuthFSM();
+    wdt_reset();
 }
