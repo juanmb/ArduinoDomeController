@@ -20,8 +20,6 @@ enum State {
     ST_CLOSING,
     ST_ABORTED,
     ST_ERROR,
-    ST_OPENING_BLOCKED,
-    ST_CLOSING_BLOCKED,
 };
 
 
@@ -32,25 +30,28 @@ enum Action {
     DO_ABORT,
 };
 
+// Define a pointer to a function for checking shutter/flap interference
+typedef bool (*interFn)(State st);
+
+
 class Shutter {
 public:
-    Shutter(Motor *motor, int closedSwitch, int openSwitch,
-            int interSwitch, unsigned long timeout);
+    Shutter(Motor *motor, int closedSwitch, int openSwitch, unsigned long timeout,
+            interFn checkInterference);
     void open();
     void close();
     void abort();
     void update();
     State getState();
 private:
+    interFn interference;
     void initState();
-    bool interference();
     Motor *motor;
     State state;
     Action nextAction;
     unsigned long runTimeout;
     int swClosed;
     int swOpen;
-    int swInter;
 };
 
 #endif

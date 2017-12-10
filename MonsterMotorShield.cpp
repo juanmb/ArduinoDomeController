@@ -45,7 +45,7 @@ void Motor::stop()
     analogWrite(pwmpin[_nmotor], 0);
 }
 
-void Motor::abort()
+void Motor::brake()
 {
     digitalWrite(inApin[_nmotor], HIGH);
     digitalWrite(inBpin[_nmotor], HIGH);

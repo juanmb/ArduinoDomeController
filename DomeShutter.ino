@@ -55,10 +55,23 @@ enum {
     BTN_B_CLOSE,
 };
 
+// Detect mechanical interfence between the two shutters
+bool checkFlapInterference(State st)
+{
+    return (st == ST_OPENING) && digitalRead(SW_INTER);
+}
+
+// Detect mechanical interfence between the two shutters
+bool checkShutterInterference(State st)
+{
+    return (st == ST_CLOSING) && digitalRead(SW_INTER) && !digitalRead(SW_B1);
+}
+
+
 Motor motorA(0);
 Motor motorB(1);
-Shutter shutter(&motorA, SW_A1, SW_A2, -1, SHUTTER_TIMEOUT);
-Shutter flap(&motorB, SW_B1, SW_B2, SW_INTER, FLAP_TIMEOUT);
+Shutter shutter(&motorA, SW_A1, SW_A2, SHUTTER_TIMEOUT, checkShutterInterference);
+Shutter flap(&motorB, SW_B1, SW_B2, FLAP_TIMEOUT, checkFlapInterference);
 SerialCommand sCmd;
 unsigned long lastCmdTime = 0;
 
@@ -85,11 +98,9 @@ State domeStatus()
 
     if (sst == ST_ERROR || fst == ST_ERROR)
         return ST_ERROR;
-    else if (sst == ST_OPENING || fst == ST_OPENING ||
-            sst == ST_OPENING_BLOCKED || fst == ST_OPENING_BLOCKED)
+    else if (sst == ST_OPENING || fst == ST_OPENING)
         return ST_OPENING;
-    else if (sst == ST_CLOSING || fst == ST_CLOSING ||
-            sst == ST_CLOSING_BLOCKED || fst == ST_CLOSING_BLOCKED)
+    else if (sst == ST_CLOSING || fst == ST_CLOSING)
         return ST_CLOSING;
     else if (sst == ST_OPEN || fst == ST_OPEN)
         return ST_OPEN;
