@@ -40,7 +40,7 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 #define SW_INTER 2      // shutter interference detection switch
 #define BUTTONS A4      // analog input for reading the buttons
 
-#define NBUTTONS 4
+#define BUTTON_REPS 80  // Number of ADC readings required to detect a pressed button
 
 // Timeouts in ms
 #define COMMAND_TIMEOUT 5000    // Max. time from last command
@@ -69,12 +69,34 @@ int readButton()
     int buttonLimits[] = {92, 303, 518, 820};
     int val = analogRead(BUTTONS);
 
-    for (int i = 0; i < NBUTTONS; i++) {
+    for (int i = 0; i < 4; i++) {
         if (val < buttonLimits[i]) {
             return i + 1;
         }
     }
     return 0;
+}
+
+// Return dome status by combining shutter and flap statuses
+State domeStatus()
+{
+    State sst = shutter.getState();
+    State fst = flap.getState();
+
+    if (sst == ST_ERROR || fst == ST_ERROR)
+        return ST_ERROR;
+    else if (sst == ST_OPENING || fst == ST_OPENING ||
+            sst == ST_OPENING_BLOCKED || fst == ST_OPENING_BLOCKED)
+        return ST_OPENING;
+    else if (sst == ST_CLOSING || fst == ST_CLOSING ||
+            sst == ST_CLOSING_BLOCKED || fst == ST_CLOSING_BLOCKED)
+        return ST_CLOSING;
+    else if (sst == ST_OPEN || fst == ST_OPEN)
+        return ST_OPEN;
+    else if (sst == ST_CLOSED && fst == ST_CLOSED)
+        return ST_CLOSED;
+
+    return ST_ABORTED;
 }
 
 void cmdOpenShutter() {
@@ -113,24 +135,7 @@ void cmdExit()
 void cmdStatus()
 {
     lastCmdTime = millis();
-
-    State sst = shutter.getState();
-    State fst = flap.getState();
-    State st = ST_ABORTED;
-
-    if (sst == ST_ERROR || fst == ST_ERROR)
-        st = ST_ERROR;
-    else if (sst == ST_OPENING || fst == ST_OPENING ||
-            sst == ST_OPENING_BLOCKED || fst == ST_OPENING_BLOCKED)
-        st = ST_OPENING;
-    else if (sst == ST_CLOSING || fst == ST_CLOSING ||
-            sst == ST_CLOSING_BLOCKED || fst == ST_CLOSING_BLOCKED)
-        st = ST_CLOSING;
-    else if (sst == ST_OPEN || fst == ST_OPEN)
-        st = ST_OPEN;
-    else if (sst == ST_CLOSED && fst == ST_CLOSED)
-        st = ST_CLOSED;
-
+    State st = domeStatus();
     Serial.write('0' + st);
 }
 
@@ -169,7 +174,7 @@ void loop()
         btn_count = 0;
     btn_prev = btn;
 
-    if (btn_count == 80) {
+    if (btn_count == BUTTON_REPS) {
         switch(btn) {
         case BTN_A_OPEN:
             shutter.open();
@@ -186,18 +191,21 @@ void loop()
         }
     }
 
-    shutter.update();
-    flap.update();
-    sCmd.readSerial();
+    // Close the dome if time from last command > COMMAND_TIMEOUT
+    if ((lastCmdTime > 0) && ((millis() - lastCmdTime) > COMMAND_TIMEOUT)) {
+        if (domeStatus() != ST_CLOSED) {
+            lastCmdTime = 0;
+            shutter.close();
+            flap.close();
+        }
+    }
 
     int err = (shutter.getState() == ST_ERROR) || (flap.getState() == ST_ERROR);
     digitalWrite(LED_ERR, err);
 
-    // Close the dome if time from last command > COMMAND_TIMEOUT
-    if (lastCmdTime && (millis() - lastCmdTime > COMMAND_TIMEOUT)) {
-        shutter.close();
-        flap.close();
-    }
+    shutter.update();
+    flap.update();
+    sCmd.readSerial();
 
     wdt_reset();
 }

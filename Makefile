@@ -10,7 +10,7 @@
 BOARD_TAG    = uno
 ARDUINO_LIBS = SoftwareSerial SerialCommand
 ARDUINO_LIBS += Wire
-ARDUINO_PORT = /dev/ttyACM2
+ARDUINO_PORT = /dev/ttyACM0
 
 include /usr/share/arduino/Arduino.mk
 
