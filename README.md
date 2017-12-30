@@ -19,11 +19,12 @@ Azimuth angle is read by an optical encoder connected to a rubber wheel that
 rotates with the dome. A hall probe is used to detect the "home" mark, wich
 serves as an absolute reference for azimuth angle.
 
-The azimuth motor is a three-phase driven by a variable frequency drive. Three
-Arduino pins control the VFD through NPN transistors:
+The dome is driven by a three-phase motor powered by a variable frequency drive (VFD).
+Three digital Arduino pins control the VFD through NPN transistors,
+which are connected to the following terminals in the VFD:
 
- * Move motor clockwise
- * Move motor counterclockwise
+ * Clockwise motion
+ * Counterclockwise motion
  * Jog (slow motion)
  
 For more details, read the definitions in [DomeController.ino](DomeController/DomeController.ino).
@@ -35,15 +36,15 @@ The shutter controller is mounted in the rotating dome and it is powered by
 a 12v lead-acid battery. The battery can be charged with
 
  * a solar panel (the solution I am using).
- * a trickle charger connected to the battery with two brushes when the dome is
-   in the home position.
+ * a trickle charger wich is connected to the battery when the dome is
+   in the home position using two brushes.
 
 The shutter controller communicates with the main board by means of a serial
 radio link created with HC-12 modules.
 
- ![](images/hc12_module.png)
+ ![](images/hc12_module.jpg)
 
-Shutter and flap DC motors are controlled by a Monster Moto Shield.
+Shutter and flap DC motors are controlled by a [Monster Moto Shield](https://www.sparkfun.com/products/10182).
 
 Five limit switches are used. Pin numbers are defined in [DomeShutter.ino](DomeShutter/DomeShutter.ino).
 
