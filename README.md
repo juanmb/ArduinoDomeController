@@ -45,7 +45,7 @@ radio link created with HC-12 modules.
 
 Shutter and flap DC motors are controlled by a Monster Moto Shield.
 
-Five limit switches are used. Pin numbers are defined in [DomeShutter.ino](DomeController/DomeShutter.ino).
+Five limit switches are used. Pin numbers are defined in [DomeShutter.ino](DomeShutter/DomeShutter.ino).
 
  * Shutter closed
  * Shutter fully open
@@ -57,4 +57,4 @@ The 4-button keyboard in the shutter controller is read using only one analog pi
 
  ![](images/keyboard.png)
 
-For more details, read the definitions in [DomeShutter.ino](DomeController/DomeShutter.ino).
+For more details, read the definitions in [DomeShutter.ino](DomeShutter/DomeShutter.ino).
