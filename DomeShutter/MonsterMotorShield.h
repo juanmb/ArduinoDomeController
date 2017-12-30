@@ -6,7 +6,6 @@ https://www.sparkfun.com/products/10182
 Copyright (C) 2017 Juan Menendez <juanmb@gmail.com>
 *******************************************************************************/
 
-
 #ifndef _MonsterMotorShield_h_
 #define _MonsterMotorShield_h_
 

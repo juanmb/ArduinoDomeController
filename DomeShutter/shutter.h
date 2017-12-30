@@ -1,11 +1,10 @@
-/*******************************************************************************
-Shutter class definition
+/******************************************************************
+    Author:     Juan Menendez Blanco    <juanmb@gmail.com>
 
-https://www.sparkfun.com/products/10182
+    This code is part of the ArduinoDomeController project:
+        https://github.com/juanmb/ArduinoDomeController
 
-Copyright (C) 2017 Juan Menendez <juanmb@gmail.com>
-*******************************************************************************/
-
+*******************************************************************/
 
 #ifndef _shutter_h_
 #define _shutter_h_
