@@ -1,5 +1,5 @@
-/build*/**
-/commTest/**/build*/**
+*/build*/**
+commTest/**/build*/**
 *.*~
 *~
 *.cpp~
@@ -8,3 +8,27 @@
 *_OLD*
 *ino_
 *.orig
+
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
