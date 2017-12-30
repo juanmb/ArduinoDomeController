@@ -12,7 +12,7 @@ An astronomical observatory dome controller based on two Arduino boards.
 Main controller
 ---------------
 
-The main controller is connected by USB to a PC. It uses the MaxDome II serial
+The main controller is connected to a PC by a USB cable. It uses the MaxDome II serial
 protocol for compatibility with existing software.
 
 Azimuth angle is read by an optical encoder connected to a rubber wheel that
@@ -25,8 +25,8 @@ Arduino pins control the VFD through NPN transistors:
  * Move motor clockwise
  * Move motor counterclockwise
  * Jog (slow motion)
-
-For more details, read the definitions in `DomeController.ino`.
+ 
+For more details, read the definitions in [DomeController.ino](DomeController/DomeController.ino).
 
 Shutter controller
 ------------------
@@ -45,7 +45,7 @@ radio link created with HC-12 modules.
 
 Shutter and flap DC motors are controlled by a Monster Moto Shield.
 
-Five limit switches are used. Pin numbers are defined in `DomeShutter.ino`.
+Five limit switches are used. Pin numbers are defined in [DomeShutter.ino](DomeController/DomeShutter.ino).
 
  * Shutter closed
  * Shutter fully open
@@ -57,4 +57,4 @@ The 4-button keyboard in the shutter controller is read using only one analog pi
 
  ![](images/keyboard.png)
 
-For more details, read the definitions in `DomeShutter.ino`.
+For more details, read the definitions in [DomeShutter.ino](DomeController/DomeShutter.ino).
