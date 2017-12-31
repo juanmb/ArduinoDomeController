@@ -24,8 +24,8 @@ Shutter::Shutter(Motor *motorPtr, int closedSwitch, int openSwitch,
         unsigned long timeout, interFn checkInterference)
 {
     motor = motorPtr;
-    swClosed = closedSwitch;
-    swOpen = openSwitch;
+    swClosed = closedSwitch;    // normally closed (1 if shutter is closed)
+    swOpen = openSwitch;        // normally open (0 if shutter is fully open)
     runTimeout = timeout;
     interference = checkInterference;
     nextAction = DO_NONE;
@@ -37,7 +37,7 @@ void Shutter::initState()
 {
     if (digitalRead(swClosed))
         state = ST_CLOSED;
-    else if (digitalRead(swOpen))
+    else if (!digitalRead(swOpen))
         state = ST_OPEN;
     else
         state = ST_ABORTED;
@@ -91,7 +91,7 @@ void Shutter::update()
         else
             motor->run(MOTOR_OPEN, SPEED);
 
-        if (digitalRead(swOpen)) {
+        if (!digitalRead(swOpen)) {
             state = ST_OPEN;
             motor->brake();
         } else if (action == DO_ABORT || action == DO_OPEN) {
