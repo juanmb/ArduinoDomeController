@@ -44,8 +44,8 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 
 // Timeouts in ms
 #define COMMAND_TIMEOUT 5000    // Max. time from last command
-#define SHUTTER_TIMEOUT 3000    // Max. time the shutter takes to open/close
-#define FLAP_TIMEOUT 3000       // Max. time the flap takes to open/close
+#define SHUTTER_TIMEOUT 60000   // Max. time the shutter takes to open/close
+#define FLAP_TIMEOUT 10000      // Max. time the flap takes to open/close
 
 enum {
     BTN_NONE,
