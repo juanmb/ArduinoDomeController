@@ -223,8 +223,10 @@ ShutterStatus getShutterStatus() {
 }
 
 
-void cmdAbortAzimuth(uint8_t *cmd)
+void cmdAbort(uint8_t *cmd)
 {
+    HC12.println("abort");  // abort shutter movement
+
     az_event = EVT_ABORT;
 
     uint8_t resp[] = {START, 2, TO_COMPUTER | ABORT_CMD, 0x00};
@@ -418,7 +420,7 @@ void setup()
     wdt_disable();
     wdt_enable(WDTO_2S);
 
-    sCmd.addCommand(ABORT_CMD, 2, cmdAbortAzimuth);
+    sCmd.addCommand(ABORT_CMD, 2, cmdAbort);
     sCmd.addCommand(HOME_CMD, 2, cmdHomeAzimuth);
     sCmd.addCommand(GOTO_CMD, 5, cmdGotoAzimuth);
     sCmd.addCommand(SHUTTER_CMD, 3, cmdShutterCommand);
