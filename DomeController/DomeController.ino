@@ -48,6 +48,9 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 #define TO_MAXDOME  0x00
 #define TO_COMPUTER 0x80
 
+#define VBAT_FACTOR (5.0/1024.0)
+#define VBAT_OFFSET 10.55
+
 // Commands
 #define ABORT_CMD   0x03 // Abort azimuth movement
 #define HOME_CMD    0x04 // Move until 'home' position is detected
@@ -201,8 +204,8 @@ inline void setJog(bool enable)
     digitalWrite(MOTOR_JOG, enable);
 }
 
-int getShutterVBat() {
-    int vbat = -1;
+float getShutterVBat() {
+    int adc;
     char buffer[5];
 
     HC12.flush();
@@ -216,11 +219,13 @@ int getShutterVBat() {
             }
     
             buffer[4] = 0;
-            vbat = atoi(buffer);
+            adc = atoi(buffer);
             break;
         }
     }
-    return vbat;
+
+    // Convert ADC reading to voltage
+    return (float)adc * VBAT_FACTOR + VBAT_OFFSET;
 }
 
 ShutterStatus getShutterStatus() {
@@ -348,7 +353,7 @@ void cmdVBat(uint8_t *cmd)
 {
     uint8_t resp[] = {START, 4, TO_COMPUTER | VBAT_CMD, 0x00, 0x00, 0x00};
 
-    int vbat = getShutterVBat();
+    int vbat = getShutterVBat()*100;
     intToBytes(vbat, resp + 3);
 
     sCmd.sendResponse(resp, 6);

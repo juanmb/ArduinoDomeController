@@ -60,7 +60,7 @@ class MaxDomeII(object):
     def get_voltage(self):
         resp = self.__send(CMD_VBAT, 6)
         vbat = struct.unpack('!H', resp[3:-1])[0]
-        return vbat*5.0/1023.0 + 8.4
+        return float(vbat)/100
 
 
 if __name__ == '__main__':
