@@ -70,7 +70,7 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 #define ABORT_SHUTTER           0x07
 
 #define DIR_CW  0x01
-#define DIR_CCW 0x01
+#define DIR_CCW 0x02
 
 #define AZ_TOLERANCE    4       // Azimuth target tolerance in encoder ticks
 #define AZ_SLOW_RANGE   16      //
@@ -169,9 +169,9 @@ void eepromWriteUint16(int address, uint16_t value)
 uint8_t getDirection(uint16_t current, uint16_t target)
 {
     if (target > current)
-        return (target - current > ticks_per_turn/2) ? DIR_CCW : DIR_CW;
+        return ((target - current) > ticks_per_turn/2) ? DIR_CCW : DIR_CW;
 
-    return (current - target > ticks_per_turn/2) ? DIR_CW : DIR_CCW;
+    return ((current - target) > ticks_per_turn/2) ? DIR_CW : DIR_CCW;
 }
 
 // Obtain the distance between two positons
@@ -263,7 +263,7 @@ void cmdAbort(uint8_t *cmd)
 
 void cmdHomeAzimuth(uint8_t *cmd)
 {
-    current_dir = getDirection(current_pos, home_pos);
+    current_dir = getDirection(current_pos, 0);
     az_event = EVT_HOME;
 
     uint8_t resp[] = {START, 2, TO_COMPUTER | HOME_CMD, 0x00};

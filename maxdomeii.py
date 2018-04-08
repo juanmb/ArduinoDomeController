@@ -5,8 +5,18 @@ import serial
 
 PORT = '/dev/ttyACM0'
 
-CMD_STATUS = 0x7
-CMD_VBAT = 0xC
+CMD_ABORT = 0x03
+CMD_HOME = 0x04
+CMD_GOTO = 0x05
+CMD_SHUTTER = 0x06
+CMD_STATUS = 0x07
+CMD_TICKS = 0x09
+CMD_VBAT = 0x0C
+
+DIR_CW = 0x01
+DIR_CCW = 0x02
+
+TICKS_PER_REV = 636
 
 
 def to_hex(data):
@@ -37,9 +47,11 @@ class MaxDomeII(object):
         packet = self.__make_packet(cmd_id, payload)
         self.__ser.write(packet)
         logging.debug("SENT:", to_hex(packet))
+        print "SENT:", to_hex(packet)
 
         resp = self.__ser.read(resp_length)
         logging.debug("RECV:", to_hex(resp))
+        print "RECV:", to_hex(resp)
 
         if ord(resp[0]) != 0x01:
             raise ValueError("Invalid packet start byte: 0x%0x" % ord(resp[0]))
@@ -62,9 +74,14 @@ class MaxDomeII(object):
         vbat = struct.unpack('!H', resp[3:-1])[0]
         return float(vbat)/100
 
+    def goto(self, pos, dir):
+        payload = struct.pack('!bH', dir, pos)
+        self.__send(CMD_GOTO, 4, payload)
+
 
 if __name__ == '__main__':
     dome = MaxDomeII(PORT)
 
     print dome.get_status()
     print dome.get_voltage()
+    dome.goto(TICKS_PER_REV/8, DIR_CW)
