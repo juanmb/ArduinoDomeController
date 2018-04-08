@@ -57,6 +57,7 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 #define TICKS_CMD   0x09 // Set the number of tick per revolution of the dome
 #define ACK_CMD     0x0A // ACK (?)
 #define SETPARK_CMD 0x0B // Set park coordinates and shutter closing policy
+#define VBAT_CMD    0x0C // Read shutter's battery voltage
 
 // Shutter commands
 #define OPEN_SHUTTER            0x01
@@ -200,6 +201,28 @@ inline void setJog(bool enable)
     digitalWrite(MOTOR_JOG, enable);
 }
 
+int getShutterVBat() {
+    int vbat = -1;
+    char buffer[5];
+
+    HC12.flush();
+    for (int i=0; i<4; i++) {
+        HC12.println("vbat");
+        delay(100);
+        
+        if (HC12.read() == 'v') {
+            for (int j=0; j<4; j++) {
+                buffer[j] = HC12.read();
+            }
+    
+            buffer[4] = 0;
+            vbat = atoi(buffer);
+            break;
+        }
+    }
+    return vbat;
+}
+
 ShutterStatus getShutterStatus() {
     ShutterStatus st = SS_ERROR;
 
@@ -321,6 +344,16 @@ void cmdSetTicks(uint8_t *cmd)
     sCmd.sendResponse(resp, 4);
 }
 
+void cmdVBat(uint8_t *cmd)
+{
+    uint8_t resp[] = {START, 4, TO_COMPUTER | VBAT_CMD, 0x00, 0x00, 0x00};
+
+    int vbat = getShutterVBat();
+    intToBytes(vbat, resp + 3);
+
+    sCmd.sendResponse(resp, 6);
+}
+
 void cmdAck(uint8_t *cmd)
 {
     uint8_t resp[] = {START, 2, TO_COMPUTER | ACK_CMD, 0x00};
@@ -428,6 +461,7 @@ void setup()
     sCmd.addCommand(SETPARK_CMD, 5, cmdSetPark);
     sCmd.addCommand(TICKS_CMD, 4, cmdSetTicks);
     sCmd.addCommand(ACK_CMD, 2, cmdAck);
+    sCmd.addCommand(VBAT_CMD, 2, cmdVBat);
 
     pinMode(LED_BUILTIN, OUTPUT);
     pinMode(MOTOR_JOG, OUTPUT);

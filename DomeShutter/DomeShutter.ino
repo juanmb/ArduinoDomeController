@@ -38,14 +38,15 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 #define SW_B1    10     // flap closed switch (NC)
 #define SW_B2    3      // flap open switch (NO)
 #define SW_INTER 2      // shutter interference detection switch (NC)
-#define BUTTONS A4      // analog input for reading the buttons
+#define BUTTONS  A4     // analog input for reading the buttons
+#define VBAT_PIN A5     // battery voltage reading
 
 #define BUTTON_REPS 80  // Number of ADC readings required to detect a pressed button
 
 // Timeouts in ms
 #define COMMAND_TIMEOUT 5000    // Max. time from last command
 #define SHUTTER_TIMEOUT 60000   // Max. time the shutter takes to open/close
-#define FLAP_TIMEOUT 10000      // Max. time the flap takes to open/close
+#define FLAP_TIMEOUT 15000      // Max. time the flap takes to open/close
 
 enum {
     BTN_NONE,
@@ -150,6 +151,15 @@ void cmdStatus()
     Serial.write('0' + st);
 }
 
+void cmdGetVBat()
+{
+    lastCmdTime = millis();
+    int val = analogRead(VBAT_PIN);
+    char buffer[8];
+    sprintf(buffer, "v%04d", val);
+    Serial.write(buffer);
+}
+
 void setup()
 {
     wdt_disable();
@@ -164,6 +174,7 @@ void setup()
     sCmd.addCommand("abort", cmdAbort);
     sCmd.addCommand("exit", cmdExit);
     sCmd.addCommand("stat", cmdStatus);
+    sCmd.addCommand("vbat", cmdGetVBat);
 
     Serial.begin(9600);
 
