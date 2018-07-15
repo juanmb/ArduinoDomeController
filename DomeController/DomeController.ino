@@ -48,6 +48,9 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 #define TO_MAXDOME  0x00
 #define TO_COMPUTER 0x80
 
+#define VBAT_FACTOR (5.0/1024.0)
+#define VBAT_OFFSET 10.55
+
 // Commands
 #define ABORT_CMD   0x03 // Abort azimuth movement
 #define HOME_CMD    0x04 // Move until 'home' position is detected
@@ -67,7 +70,7 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 #define ABORT_SHUTTER           0x07
 
 #define DIR_CW  0x01
-#define DIR_CCW 0x01
+#define DIR_CCW 0x02
 
 #define AZ_TOLERANCE    4       // Azimuth target tolerance in encoder ticks
 #define AZ_SLOW_RANGE   16      //
@@ -166,9 +169,9 @@ void eepromWriteUint16(int address, uint16_t value)
 uint8_t getDirection(uint16_t current, uint16_t target)
 {
     if (target > current)
-        return (target - current > ticks_per_turn/2) ? DIR_CCW : DIR_CW;
+        return ((target - current) > ticks_per_turn/2) ? DIR_CCW : DIR_CW;
 
-    return (current - target > ticks_per_turn/2) ? DIR_CW : DIR_CCW;
+    return ((current - target) > ticks_per_turn/2) ? DIR_CW : DIR_CCW;
 }
 
 // Obtain the distance between two positons
@@ -201,8 +204,8 @@ inline void setJog(bool enable)
     digitalWrite(MOTOR_JOG, enable);
 }
 
-int getShutterVBat() {
-    int vbat = -1;
+float getShutterVBat() {
+    int adc;
     char buffer[5];
 
     HC12.flush();
@@ -216,11 +219,13 @@ int getShutterVBat() {
             }
 
             buffer[4] = 0;
-            vbat = atoi(buffer);
+            adc = atoi(buffer);
             break;
         }
     }
-    return vbat;
+
+    // Convert ADC reading to voltage
+    return (float)adc * VBAT_FACTOR + VBAT_OFFSET;
 }
 
 ShutterStatus getShutterStatus() {
@@ -258,7 +263,7 @@ void cmdAbort(uint8_t *cmd)
 
 void cmdHomeAzimuth(uint8_t *cmd)
 {
-    current_dir = getDirection(current_pos, home_pos);
+    current_dir = getDirection(current_pos, 0);
     az_event = EVT_HOME;
 
     uint8_t resp[] = {START, 2, TO_COMPUTER | HOME_CMD, 0x00};
@@ -348,7 +353,7 @@ void cmdVBat(uint8_t *cmd)
 {
     uint8_t resp[] = {START, 4, TO_COMPUTER | VBAT_CMD, 0x00, 0x00, 0x00};
 
-    int vbat = getShutterVBat();
+    int vbat = getShutterVBat()*100;
     intToBytes(vbat, resp + 3);
 
     sCmd.sendResponse(resp, 6);
@@ -476,7 +481,6 @@ void setup()
 
     Serial.begin(19200);
     HC12.begin(9600);   // Open serial port to HC12
-
 }
 
 

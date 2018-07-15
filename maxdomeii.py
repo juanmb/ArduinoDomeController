@@ -5,16 +5,20 @@ import serial
 
 PORT = '/dev/ttyUSB0'
 
-CMD_ABORT =   0x03
-CMD_HOME =    0x04
-CMD_GOTO =    0x05
+CMD_ABORT = 0x03
+CMD_HOME = 0x04
+CMD_GOTO = 0x05
 CMD_SHUTTER = 0x06
-CMD_STATUS =  0x07
-CMD_TICKS =   0x09
-CMD_ACK =     0x0A
+CMD_STATUS = 0x07
+CMD_TICKS = 0x09
+CMD_ACK = 0x0A
 CMD_SETPARK = 0x0B
-CMD_VBAT =    0x0C
+CMD_VBAT = 0x0C
 
+DIR_CW = 0x01
+DIR_CCW = 0x02
+
+TICKS_PER_REV = 636
 
 
 def to_hex(data):
@@ -80,8 +84,12 @@ class MaxDomeII(object):
 
     def get_voltage(self):
         resp = self.__send(CMD_VBAT, 6)
-        vbat = struct.unpack('!H', resp[3:5])[0]
-        return vbat*5.0/1023.0 + 8.4
+        vbat = struct.unpack('!H', resp[3:-1])[0]
+        return float(vbat)/100
+
+    def goto(self, pos, dir):
+        payload = struct.pack('!bH', dir, pos)
+        self.__send(CMD_GOTO, 4, payload)
 
 
 if __name__ == '__main__':
