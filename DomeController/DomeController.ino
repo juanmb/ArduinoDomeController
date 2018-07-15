@@ -209,12 +209,12 @@ int getShutterVBat() {
     for (int i=0; i<4; i++) {
         HC12.println("vbat");
         delay(100);
-        
+
         if (HC12.read() == 'v') {
             for (int j=0; j<4; j++) {
                 buffer[j] = HC12.read();
             }
-    
+
             buffer[4] = 0;
             vbat = atoi(buffer);
             break;
