@@ -44,8 +44,8 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 #define BUTTON_REPS 80  // Number of ADC readings required to detect a pressed button
 
 // Timeouts in ms
-#define COMMAND_TIMEOUT 5000    // Max. time from last command
-#define SHUTTER_TIMEOUT 60000   // Max. time the shutter takes to open/close
+#define COMMAND_TIMEOUT 60000   // Max. time from last command
+#define SHUTTER_TIMEOUT 75000   // Max. time the shutter takes to open/close
 #define FLAP_TIMEOUT 15000      // Max. time the flap takes to open/close
 
 enum {
