@@ -124,6 +124,7 @@ SerialCommand sCmd;
 
 bool park_on_shutter = false;
 bool home_reached = false;
+bool parking = false;
 uint8_t current_dir = DIR_CW;   // Current azimuth movement direction
 uint16_t park_pos = 0;          // Parking position
 uint16_t current_pos = 0;       // Current dome position
@@ -205,7 +206,7 @@ inline void setJog(bool enable)
 }
 
 float getShutterVBat() {
-    int adc;
+    int adc=0;
     char buffer[5];
 
     HC12.flush();
@@ -263,8 +264,10 @@ void cmdAbort(uint8_t *cmd)
 
 void cmdHomeAzimuth(uint8_t *cmd)
 {
-    current_dir = getDirection(current_pos, 0);
-    az_event = EVT_HOME;
+    if (!parking) {
+        current_dir = getDirection(current_pos, 0);
+        az_event = EVT_HOME;
+    }
 
     uint8_t resp[] = {START, 2, TO_COMPUTER | HOME_CMD, 0x00};
     sCmd.sendResponse(resp, 4);
@@ -272,12 +275,21 @@ void cmdHomeAzimuth(uint8_t *cmd)
 
 void cmdGotoAzimuth(uint8_t *cmd)
 {
-    current_dir = cmd[3];
-    target_pos = bytesToInt(cmd + 4);
-    az_event = EVT_GOTO;
+    if (!parking) {
+        current_dir = cmd[3];
+        target_pos = bytesToInt(cmd + 4);
+        az_event = EVT_GOTO;
+    }
 
     uint8_t resp[] = {START, 2, TO_COMPUTER | GOTO_CMD, 0x00};
     sCmd.sendResponse(resp, 4);
+}
+
+void parkDome()
+{
+    parking = true;
+    target_pos = park_pos;
+    az_event = EVT_GOTO;
 }
 
 void cmdShutterCommand(uint8_t *cmd)
@@ -290,7 +302,10 @@ void cmdShutterCommand(uint8_t *cmd)
         HC12.println("open1");
         break;
     case CLOSE_SHUTTER:
-        HC12.println("close");
+        if (park_on_shutter)
+            parkDome();
+        else
+            HC12.println("close");
         break;
     case EXIT_SHUTTER:
         HC12.println("exit");
@@ -372,6 +387,7 @@ void updateAzimuthFSM()
     switch(state) {
     case ST_HOMING:
         if (az_event == EVT_ABORT) {
+            parking = false;
             stopAzimuth();
             state = ST_IDLE;
         } else if (home_reached) {
@@ -386,6 +402,7 @@ void updateAzimuthFSM()
 
     case ST_GOING:
         if (az_event == EVT_ABORT) {
+            parking = false;
             stopAzimuth();
             state = ST_IDLE;
         } else if (getDistance(current_pos, target_pos) < AZ_SLOW_RANGE) {
@@ -400,10 +417,18 @@ void updateAzimuthFSM()
 
     case ST_GOING_SLOW:
         if (az_event == EVT_ABORT) {
+            parking = false;
             stopAzimuth();
             state = ST_IDLE;
         } else if (getDistance(current_pos, target_pos) < AZ_TOLERANCE) {
             stopAzimuth();
+
+            // close shutter after parking
+            if (parking) {
+                parking = false;
+                HC12.println("close");
+            }
+
             state = ST_IDLE;
         } else if (millis() - t0 > AZ_TIMEOUT) {
             stopAzimuth();

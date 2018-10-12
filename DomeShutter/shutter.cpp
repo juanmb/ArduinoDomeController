@@ -94,11 +94,9 @@ void Shutter::update()
         if (!digitalRead(swOpen)) {
             state = ST_OPEN;
             motor->brake();
-        } else if (action == DO_ABORT || action == DO_OPEN) {
+        } else if (action == DO_ABORT || action == DO_CLOSE) {
             state = ST_ABORTED;
             motor->brake();
-        } else if (action == DO_CLOSE) {
-            state = ST_CLOSING;
         } else if (millis() - t0 > runTimeout) {
             state = ST_ERROR;
             motor->brake();
@@ -113,11 +111,9 @@ void Shutter::update()
         if (digitalRead(swClosed)) {
             state = ST_CLOSED;
             motor->brake();
-        } else if (action == DO_ABORT || action == DO_CLOSE) {
+        } else if (action == DO_ABORT || action == DO_OPEN) {
             state = ST_ABORTED;
             motor->brake();
-        } else if (action == DO_OPEN) {
-            state = ST_OPENING;
         } else if (millis() - t0 > runTimeout) {
             state = ST_ERROR;
             motor->brake();
