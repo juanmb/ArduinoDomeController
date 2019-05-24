@@ -377,7 +377,7 @@ void cmdVBat(uint8_t *cmd)
 void cmdAck(uint8_t *cmd)
 {
     uint8_t resp[] = {START, 3, TO_COMPUTER | ACK_CMD, 0x03, 0x00};
-    sCmd.sendResponse(resp, 4);
+    sCmd.sendResponse(resp, 5);
 }
 
 void updateAzimuthFSM()
