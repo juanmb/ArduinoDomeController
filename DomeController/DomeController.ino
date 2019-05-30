@@ -269,8 +269,8 @@ void cmdHomeAzimuth(uint8_t *cmd)
         az_event = EVT_HOME;
     }
 
-    uint8_t resp[] = {START, 2, TO_COMPUTER | HOME_CMD, 0x00};
-    sCmd.sendResponse(resp, 4);
+    uint8_t resp[] = {START, 3, TO_COMPUTER | HOME_CMD, 0x01, 0x00};
+    sCmd.sendResponse(resp, 5);
 }
 
 void cmdGotoAzimuth(uint8_t *cmd)
@@ -281,8 +281,8 @@ void cmdGotoAzimuth(uint8_t *cmd)
         az_event = EVT_GOTO;
     }
 
-    uint8_t resp[] = {START, 2, TO_COMPUTER | GOTO_CMD, 0x00};
-    sCmd.sendResponse(resp, 4);
+    uint8_t resp[] = {START, 3, TO_COMPUTER | GOTO_CMD, 0x01, 0x00};
+    sCmd.sendResponse(resp, 5);
 }
 
 void parkDome()
@@ -334,13 +334,13 @@ void cmdStatus(uint8_t *cmd)
     }
 
     uint8_t sh_status = (uint8_t)getShutterStatus();
-    uint8_t resp[] = {START, 8, TO_COMPUTER | STATUS_CMD, sh_status, az_status,
-        0x00, 0x00, 0x00, 0x00, 0x00};
+    uint8_t resp[] = {START, 9, TO_COMPUTER | STATUS_CMD, sh_status, az_status,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
     intToBytes(current_pos, resp + 5);
     intToBytes(home_pos, resp + 7);
 
-    sCmd.sendResponse(resp, 10);
+    sCmd.sendResponse(resp, 11);
 }
 
 void cmdSetPark(uint8_t *cmd)

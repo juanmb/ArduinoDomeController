@@ -11,7 +11,7 @@ BOARD_TAG    = uno
 BOARD_SUB    = atmega328
 ARDUINO_LIBS = EEPROM SoftwareSerial SerialCommand
 ARDUINO_LIBS += Wire
-ARDUINO_PORT = /dev/ttyACM0
+ARDUINO_PORT = /dev/ttyUSB.dome
 
 include /usr/share/arduino/Arduino.mk
 
