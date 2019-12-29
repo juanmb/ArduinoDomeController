@@ -3,7 +3,7 @@ import logging
 import time
 import serial
 
-PORT = '/dev/ttyUSB0'
+PORT = '/dev/ttyACM0'
 
 CMD_ABORT = 0x03
 CMD_HOME = 0x04
@@ -29,6 +29,9 @@ class MaxDomeII(object):
     def __init__(self, port):
         self.__ser = serial.Serial(port, 19200, timeout=1)
         #time.sleep(2)
+
+    def close(self):
+        self.__ser.close()
 
     def __calc_crc(self, data):
         crc = 0
@@ -93,13 +96,18 @@ class MaxDomeII(object):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
+    #logging.basicConfig(level=logging.DEBUG)
     dome = MaxDomeII(PORT)
 
     dome.send_ack()
-    print dome.get_status()
-    dome.goto_azimuth(40, ccw=True)
-    #dome.home_azimuth()
-    time.sleep(1)
-    dome.abort()
-    #print dome.get_voltage()
+    for i in range(20):
+        print dome.get_status()
+        time.sleep(1)
+
+    # dome.goto_azimuth(40, ccw=True)
+    # #dome.home_azimuth()
+    # time.sleep(1)
+    # dome.abort()
+    # #print dome.get_voltage()
+
+    dome.close()

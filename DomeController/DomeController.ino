@@ -33,6 +33,7 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 
 
 #define BAUDRATE 19200
+#define HAS_SHUTTER     // Comment if the shutter controller is not available
 
 // pin definitions
 #define HC12_RX 4       // Recieve Pin on HC12
@@ -119,7 +120,9 @@ enum ShutterStatus {
 };
 
 
+#ifdef HAS_SHUTTER
 SoftwareSerial HC12(HC12_TX, HC12_RX); // Create Software Serial Port
+#endif
 SerialCommand sCmd;
 
 bool park_on_shutter = false;
@@ -207,6 +210,8 @@ inline void setJog(bool enable)
 
 float getShutterVBat() {
     int adc=0;
+
+#ifdef HAS_SHUTTER
     char buffer[5];
 
     HC12.flush();
@@ -224,14 +229,17 @@ float getShutterVBat() {
             break;
         }
     }
+#endif
 
     // Convert ADC reading to voltage
     return (float)adc * VBAT_FACTOR + VBAT_OFFSET;
 }
 
 ShutterStatus getShutterStatus() {
-    ShutterStatus st = SS_ERROR;
+    ShutterStatus st = SS_OPEN;
 
+#ifdef HAS_SHUTTER
+    st = SS_ERROR;
     HC12.flush();
     for (int i=0; i<4; i++) {
         HC12.println("stat");
@@ -247,14 +255,16 @@ ShutterStatus getShutterStatus() {
             break;
         }
     }
-
+#endif
     return st;
 }
 
 
 void cmdAbort(uint8_t *cmd)
 {
+#ifdef HAS_SHUTTER
     HC12.println("abort");  // abort shutter movement
+#endif
 
     az_event = EVT_ABORT;
 
@@ -294,6 +304,7 @@ void parkDome()
 
 void cmdShutterCommand(uint8_t *cmd)
 {
+#ifdef HAS_SHUTTER
     switch(cmd[3]) {
     case OPEN_SHUTTER:
         HC12.println("open");
@@ -314,6 +325,7 @@ void cmdShutterCommand(uint8_t *cmd)
         HC12.println("abort");
         break;
     }
+#endif
 
     uint8_t resp[] = {START, 2, TO_COMPUTER | SHUTTER_CMD, 0x00};
     sCmd.sendResponse(resp, 4);
@@ -426,7 +438,9 @@ void updateAzimuthFSM()
             // close shutter after parking
             if (parking) {
                 parking = false;
+#ifdef HAS_SHUTTER
                 HC12.println("close");
+#endif
             }
 
             state = ST_IDLE;
@@ -505,7 +519,9 @@ void setup()
     ticks_per_turn = eepromReadUint16(ADDR_TICKS_PER_TURN);
 
     Serial.begin(19200);
+#ifdef HAS_SHUTTER
     HC12.begin(9600);   // Open serial port to HC12
+#endif
 }
 
 
