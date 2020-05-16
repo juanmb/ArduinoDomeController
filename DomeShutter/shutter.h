@@ -9,7 +9,7 @@
 #ifndef _shutter_h_
 #define _shutter_h_
 
-#include "MonsterMotorShield.h"
+#include "motor.h"
 
 // Lid states
 enum State {
@@ -37,6 +37,7 @@ class Shutter {
 public:
     Shutter(Motor *motor, int closedSwitch, int openSwitch, unsigned long timeout,
             interFn checkInterference);
+    Shutter(Motor *motor, int closedSwitch, int openSwitch, unsigned long timeout);
     void open();
     void close();
     void abort();

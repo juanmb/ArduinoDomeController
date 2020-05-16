@@ -21,6 +21,20 @@ public:
     virtual int readCurrent();
 };
 
+// Generic DC motor driver
+class DCMotor : public Motor {
+public:
+    DCMotor(int pin1, int pin2);
+    void run(bool dir, int pwm);
+    void stop();
+    void brake();
+    bool isRunning();
+    int readCurrent();
+private:
+    int pin1, pin2;
+};
+
+// Monster Motor Shield driver
 class MMSMotor : public Motor {
 public:
     MMSMotor(uint8_t nmotor);

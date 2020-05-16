@@ -13,12 +13,17 @@
 #define MOTOR_OPEN 0
 #define MOTOR_CLOSE 1
 #define SPEED 1023
-#define DEFAULT_TIMEOUT 30000 // shutter timeout (in ms)
+
+int noInterference()
+{
+    return 0;
+}
 
 // Shutter constructor.
 // motor: pointer to an instance of Motor
 // sw1: Limit switch (closed)
 // sw2: Limit switch (fully open)
+// timeout: timeout in ms
 // swInt: Interference switch
 Shutter::Shutter(Motor *motorPtr, int closedSwitch, int openSwitch,
                  unsigned long timeout, interFn checkInterference)
@@ -28,6 +33,24 @@ Shutter::Shutter(Motor *motorPtr, int closedSwitch, int openSwitch,
     swOpen = openSwitch;        // normally open (0 if shutter is fully open)
     runTimeout = timeout;
     interference = checkInterference;
+    nextAction = DO_NONE;
+    initState();
+}
+
+
+// Shutter constructor without interference switch.
+// motor: pointer to an instance of Motor
+// sw1: Limit switch (closed)
+// sw2: Limit switch (fully open)
+// timeout: timeout in ms
+Shutter::Shutter(Motor *motorPtr, int closedSwitch, int openSwitch,
+                 unsigned long timeout)
+{
+    motor = motorPtr;
+    swClosed = closedSwitch;    // normally closed (1 if shutter is closed)
+    swOpen = openSwitch;        // normally open (0 if shutter is fully open)
+    runTimeout = timeout;
+    interference = noInterference;
     nextAction = DO_NONE;
     initState();
 }

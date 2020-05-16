@@ -27,7 +27,7 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 *******************************************************************************/
 
 #include <avr/wdt.h>
-#include "MonsterMotorShield.h"
+#include "motor.h"
 #include "SerialCommand.h"
 #include "shutter.h"
 
@@ -41,7 +41,10 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 #define BUTTONS  A4     // analog input for reading the buttons
 #define VBAT_PIN A5     // battery voltage reading
 
-#define BUTTON_REPS 80  // Number of ADC readings required to detect a pressed button
+#define MOTOR_A1 8
+#define MOTOR_A2 9
+
+#define BUTTON_REPS 4  // Number of ADC readings required to detect a pressed button
 
 // Timeouts in ms
 #define COMMAND_TIMEOUT 60000   // Max. time from last command
@@ -58,6 +61,14 @@ enum {
     BTN_B_CLOSE,
 };
 
+SerialCommand sCmd;
+unsigned long lastCmdTime = 0;
+
+/*
+// Two shutters controlled by a Monster Motor Shield
+MMSMotor motorA(0);
+MMSMotor motorB(1);
+
 // Detect mechanical interfence between the two shutters
 bool checkFlapInterference(State st)
 {
@@ -70,32 +81,55 @@ bool checkShutInterference(State st)
     return (st == ST_CLOSING) && digitalRead(SW_INTER) && !digitalRead(SW_B1);
 }
 
-
-// Monster Motor Shield
-MMSMotor motorA(0);
-MMSMotor motorB(1);
-
 Shutter shutters[] = {
     Shutter(&motorA, SW_A1, SW_A2, SHUT_TIMEOUT, checkShutInterference),
     Shutter(&motorB, SW_B1, SW_B2, FLAP_TIMEOUT, checkFlapInterference),
 };
+*/
 
-SerialCommand sCmd;
-unsigned long lastCmdTime = 0;
+// Single shutter with a generic motor driver
+DCMotor motorA(MOTOR_A1, MOTOR_A2);
+Shutter shutters[] = {
+    Shutter(&motorA, SW_A1, SW_A2, SHUT_TIMEOUT),
+};
 
 // Detect a pressed button by reading an analog input.
 // Every button puts a different voltage at the input.
-int readButton()
+// A button is considered active after BUTTON_REPS succesive readings.
+int readAnalogButtons(int pin)
 {
-    int buttonLimits[] = {92, 303, 518, 820};
-    int val = analogRead(BUTTONS);
+    static int btn_prev = 0, btn_count = 0;
 
-    for (int i = 0; i < 4; i++) {
+    int buttonLimits[] = {92, 303, 518, 820};
+    int val = analogRead(pin);
+
+    int btn = BTN_NONE;
+    for (int i = 0; i < LEN(buttonLimits); i++) {
         if (val < buttonLimits[i]) {
-            return i + 1;
+            btn = i + 1;
+            break;
         }
     }
+
+    if (btn && (btn == btn_prev))
+        btn_count++;
+    else
+        btn_count = 0;
+    btn_prev = btn;
+
+    if (btn_count == BUTTON_REPS)
+        return btn;
     return 0;
+}
+
+int readButtons()
+{
+    int btn = BTN_NONE;
+    if (digitalRead(BTN_PIN1))
+        btn = BTN_A_OPEN;
+    if (digitalRead(BTN_PIN2))
+        btn = BTN_A_CLOSE;
+    return btn;
 }
 
 // Return the combined status of the shutters
@@ -201,38 +235,31 @@ void setup()
 
 void loop()
 {
-    int btn = readButton();
-    static int btn_prev = 0;
-    static int btn_count = 0;
+    int btn = readAnalogButtons(BUTTONS);
 
-    if (btn && (btn == btn_prev))
-        btn_count++;
-    else
-        btn_count = 0;
-    btn_prev = btn;
-
-    if (btn_count == BUTTON_REPS) {
-        switch(btn) {
-        case BTN_A_OPEN:
-            shutters[0].open();
-            break;
-        case BTN_A_CLOSE:
-            shutters[0].close();
-            break;
-        case BTN_B_OPEN:
-            if (LEN(shutters) > 1)
-                shutters[1].open();
-            break;
-        case BTN_B_CLOSE:
-            if (LEN(shutters) > 1)
-                shutters[1].close();
-            break;
-        }
+    switch(btn) {
+    case BTN_A_OPEN:
+        shutters[0].open();
+        break;
+    case BTN_A_CLOSE:
+        shutters[0].close();
+        break;
+    case BTN_B_OPEN:
+        if (LEN(shutters) > 1)
+            shutters[1].open();
+        break;
+    case BTN_B_CLOSE:
+        if (LEN(shutters) > 1)
+            shutters[1].close();
+        break;
     }
 
     State st = domeStatus();
 
-    // Close the dome if time from last command > COMMAND_TIMEOUT
+    // switch on the LED if there is an error
+    digitalWrite(LED_ERR, (st == ST_ERROR));
+
+    // close the dome if the time since the last command is too long
     if ((lastCmdTime > 0) && ((millis() - lastCmdTime) > COMMAND_TIMEOUT)) {
         if (st != ST_CLOSED) {
             lastCmdTime = 0;
@@ -241,11 +268,10 @@ void loop()
         }
     }
 
-    digitalWrite(LED_ERR, (st == ST_ERROR));
-
     for (int i = 0; i < LEN(shutters); i++)
         shutters[i].update();
 
     sCmd.readSerial();
     wdt_reset();
+    delay(25);
 }

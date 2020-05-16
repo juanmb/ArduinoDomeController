@@ -7,7 +7,7 @@ Copyright (C) 2017 Juan Menendez <juanmb@gmail.com>
 *******************************************************************************/
 
 #include <Arduino.h>
-#include "MonsterMotorShield.h"
+#include "motor.h"
 
 
 /*  VNH2SP30 pin definitions
