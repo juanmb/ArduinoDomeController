@@ -21,7 +21,7 @@
 // sw2: Limit switch (fully open)
 // swInt: Interference switch
 Shutter::Shutter(Motor *motorPtr, int closedSwitch, int openSwitch,
-        unsigned long timeout, interFn checkInterference)
+                 unsigned long timeout, interFn checkInterference)
 {
     motor = motorPtr;
     swClosed = closedSwitch;    // normally closed (1 if shutter is closed)
@@ -44,11 +44,23 @@ void Shutter::initState()
 }
 
 
-void Shutter::open() { nextAction = DO_OPEN; }
-void Shutter::close() { nextAction = DO_CLOSE; }
-void Shutter::abort() { nextAction = DO_ABORT; }
+void Shutter::open()
+{
+    nextAction = DO_OPEN;
+}
+void Shutter::close()
+{
+    nextAction = DO_CLOSE;
+}
+void Shutter::abort()
+{
+    nextAction = DO_ABORT;
+}
 
-State Shutter::getState() { return state; }
+State Shutter::getState()
+{
+    return state;
+}
 
 
 // Shutter state machine
@@ -80,7 +92,8 @@ void Shutter::update()
         if (action == DO_OPEN) {
             t0 = millis();
             state = ST_OPENING;
-        } else if (action == DO_CLOSE) {
+        }
+        else if (action == DO_CLOSE) {
             t0 = millis();
             state = ST_CLOSING;
         }
@@ -94,10 +107,12 @@ void Shutter::update()
         if (!digitalRead(swOpen)) {
             state = ST_OPEN;
             motor->brake();
-        } else if (action == DO_ABORT || action == DO_CLOSE) {
+        }
+        else if (action == DO_ABORT || action == DO_CLOSE) {
             state = ST_ABORTED;
             motor->brake();
-        } else if (millis() - t0 > runTimeout) {
+        }
+        else if (millis() - t0 > runTimeout) {
             state = ST_ERROR;
             motor->brake();
         }
@@ -111,10 +126,12 @@ void Shutter::update()
         if (digitalRead(swClosed)) {
             state = ST_CLOSED;
             motor->brake();
-        } else if (action == DO_ABORT || action == DO_OPEN) {
+        }
+        else if (action == DO_ABORT || action == DO_OPEN) {
             state = ST_ABORTED;
             motor->brake();
-        } else if (millis() - t0 > runTimeout) {
+        }
+        else if (millis() - t0 > runTimeout) {
             state = ST_ERROR;
             motor->brake();
         }
