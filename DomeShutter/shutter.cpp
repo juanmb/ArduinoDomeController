@@ -14,6 +14,9 @@
 #define MOTOR_CLOSE 1
 #define SPEED 1023
 
+#define OPEN_SW_ACTIVE_HIGH 1   // "Open" switch is active HIGH
+#define CLOSED_SW_ACTIVE_HIGH   1   // "Closed" switch is active HIGH
+
 int noInterference()
 {
     return 0;
@@ -29,14 +32,24 @@ Shutter::Shutter(Motor *motorPtr, int closedSwitch, int openSwitch,
                  unsigned long timeout, interFn checkInterference)
 {
     motor = motorPtr;
-    swClosed = closedSwitch;    // normally closed (1 if shutter is closed)
-    swOpen = openSwitch;        // normally open (0 if shutter is fully open)
+    swClosed = closedSwitch;
+    swOpen = openSwitch;
     runTimeout = timeout;
     interference = checkInterference;
     nextAction = DO_NONE;
     initState();
 }
 
+
+inline bool Shutter::isOpen()
+{
+    return (digitalRead(swOpen) == OPEN_SW_ACTIVE_HIGH);
+}
+
+inline bool Shutter::isClosed()
+{
+    return (digitalRead(swClosed) == CLOSED_SW_ACTIVE_HIGH);
+}
 
 // Shutter constructor without interference switch.
 // motor: pointer to an instance of Motor
@@ -58,9 +71,9 @@ Shutter::Shutter(Motor *motorPtr, int closedSwitch, int openSwitch,
 
 void Shutter::initState()
 {
-    if (digitalRead(swClosed))
+    if (isClosed())
         state = ST_CLOSED;
-    else if (!digitalRead(swOpen))
+    else if (isOpen())
         state = ST_OPEN;
     else
         state = ST_ABORTED;
@@ -127,7 +140,7 @@ void Shutter::update()
         else
             motor->run(MOTOR_OPEN, SPEED);
 
-        if (!digitalRead(swOpen)) {
+        if (isOpen()) {
             state = ST_OPEN;
             motor->brake();
         }
@@ -146,7 +159,7 @@ void Shutter::update()
         else
             motor->run(MOTOR_CLOSE, SPEED);
 
-        if (digitalRead(swClosed)) {
+        if (isClosed()) {
             state = ST_CLOSED;
             motor->brake();
         }

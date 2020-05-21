@@ -44,6 +44,8 @@ public:
     void update();
     State getState();
 private:
+    bool isOpen();
+    bool isClosed();
     interFn interference;
     void initState();
     Motor *motor;

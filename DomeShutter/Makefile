@@ -7,10 +7,14 @@
 # Source code can be downloaded from:
 # 	https://github.com/sudar/Arduino-Makefile
 
-BOARD_TAG    = uno
+#BOARD_TAG    = uno
+
+BOARD_TAG    = nano
+BOARD_SUB    = atmega168
+
 ARDUINO_LIBS = SoftwareSerial SerialCommand
 ARDUINO_LIBS += Wire
-ARDUINO_PORT = /dev/ttyACM0
+ARDUINO_PORT = /dev/ttyUSB0
 
 include /usr/share/arduino/Arduino.mk
 

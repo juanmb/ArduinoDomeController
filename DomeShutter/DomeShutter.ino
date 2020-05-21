@@ -32,7 +32,8 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 #include "shutter.h"
 
 // Pin definitions
-#define LED_ERR  13     // error LED
+/*
+#define LED_PIN  13     // error LED
 #define SW_A1    12     // shutter closed switch (NC)
 #define SW_A2    11     // shutter open switch (NO)
 #define SW_B1    10     // flap closed switch (NC)
@@ -40,9 +41,17 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 #define SW_INTER 2      // shutter interference detection switch (NC)
 #define BUTTONS  A4     // analog input for reading the buttons
 #define VBAT_PIN A5     // battery voltage reading
+*/
 
+#define LED_PIN  13     // error LED
+#define SW_A1    5      // shutter closed switch (normally closed)
+#define SW_A2    6      // shutter open switch (normally closed)
+#define BTN_PIN1 11	// 'open' button
+#define BTN_PIN2 12	// 'close' button
 #define MOTOR_A1 8
 #define MOTOR_A2 9
+#define VBAT_PIN A5     // battery voltage reading
+
 
 #define BUTTON_REPS 4  // Number of ADC readings required to detect a pressed button
 
@@ -124,11 +133,18 @@ int readAnalogButtons(int pin)
 
 int readButtons()
 {
+    static int btn1_prev = 1, btn2_prev = 1;
+    int btn1 = digitalRead(BTN_PIN1);
+    int btn2 = digitalRead(BTN_PIN2);
     int btn = BTN_NONE;
-    if (digitalRead(BTN_PIN1))
+
+    if (!btn1 && btn1_prev)
         btn = BTN_A_OPEN;
-    if (digitalRead(BTN_PIN2))
+    else if (!btn2 && btn2_prev)
         btn = BTN_A_CLOSE;
+
+    btn1_prev = btn1;
+    btn2_prev = btn2;
     return btn;
 }
 
@@ -214,7 +230,11 @@ void setup()
     wdt_disable();
     wdt_enable(WDTO_1S);
 
-    pinMode(LED_ERR, OUTPUT);
+    pinMode(LED_PIN, OUTPUT);
+    pinMode(BTN_PIN1, INPUT_PULLUP);
+    pinMode(BTN_PIN2, INPUT_PULLUP);
+    pinMode(SW_A1, INPUT_PULLUP);
+    pinMode(SW_A2, INPUT_PULLUP);
 
     // Map serial commands to functions
     sCmd.addCommand("open", cmdOpenBoth);
@@ -227,15 +247,16 @@ void setup()
 
     Serial.begin(9600);
 
-    digitalWrite(LED_ERR, HIGH);
+    digitalWrite(LED_PIN, HIGH);
     delay(200);
-    digitalWrite(LED_ERR, LOW);
+    digitalWrite(LED_PIN, LOW);
 }
 
 
 void loop()
 {
-    int btn = readAnalogButtons(BUTTONS);
+    //int btn = readAnalogButtons(BUTTONS);
+    int btn = readButtons();
 
     switch(btn) {
     case BTN_A_OPEN:
@@ -257,7 +278,7 @@ void loop()
     State st = domeStatus();
 
     // switch on the LED if there is an error
-    digitalWrite(LED_ERR, (st == ST_ERROR));
+    digitalWrite(LED_PIN, (st == ST_ERROR));
 
     // close the dome if the time since the last command is too long
     if ((lastCmdTime > 0) && ((millis() - lastCmdTime) > COMMAND_TIMEOUT)) {
