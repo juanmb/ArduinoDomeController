@@ -29,21 +29,41 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 #include <EEPROM.h>
 #include <avr/wdt.h>
 #include <SoftwareSerial.h>
+#include "MonsterMotorShield.h"
 #include "serial_command.h"
 
 
-#define BAUDRATE 19200
-#define HAS_SHUTTER     // Comment if the shutter controller is not available
+// configuration
+#define HAS_SHUTTER   // Comment if the shutter controller is not available
+//#define MOTOR_SHIELD    // Uncomment if you use a Monster Motor Shield
+#define AZ_TOLERANCE    4       // Azimuth target tolerance in encoder ticks
+#define AZ_SLOW_RANGE   16      //
+#define AZ_TIMEOUT      30000   // Azimuth movement timeout (in ms)
 
 // pin definitions
-#define HC12_RX 4       // Recieve Pin on HC12
+#define ENCODER1 2      // Encoder
+#define ENCODER2 3      // Encoder
+#define HOME_SENSOR 10  // Home sensor
+#define BUTTON_CW   11  // CW button
+#define BUTTON_CCW  12  // CCW button
+
+#ifdef HAS_SHUTTER
+#ifdef MOTOR_SHIELD
+#error "MOTOR_SHIELD and HAS_SHUTTER cannot be defined at the same time"
+#endif
+
+// pins of HC12 module (serial radio transceiver)
+#define HC12_RX 4       // Receive Pin on HC12
 #define HC12_TX 5       // Transmit Pin on HC12
-#define ENCODER1 2      // Azimuth encoder
-#define ENCODER2 3      // Azimuth encoder
+#endif
+
+
+// motor pins (if not using the Monster Motor Shield)
+#ifndef MOTOR_SHIELD
 #define MOTOR_JOG 7     // Motor jog mode (low speed)
 #define MOTOR_CW 8      // Move motor clockwise
 #define MOTOR_CCW 9     // Move motor counterclockwise
-#define HALL_PROBE 10   // Home probe
+#endif
 
 // Message Destination
 #define TO_MAXDOME  0x00
@@ -51,6 +71,8 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 
 #define VBAT_FACTOR (5.0/1024.0)
 #define VBAT_OFFSET 10.55
+
+#define BAUDRATE 19200
 
 // Commands
 #define ABORT_CMD   0x03 // Abort azimuth movement
@@ -73,10 +95,6 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 #define DIR_CW  0x01
 #define DIR_CCW 0x02
 
-#define AZ_TOLERANCE    4       // Azimuth target tolerance in encoder ticks
-#define AZ_SLOW_RANGE   16      //
-#define AZ_TIMEOUT      30000   // Azimuth movement timeout (in ms)
-
 // EEPROM addresses
 #define ADDR_PARK_POS           0
 #define ADDR_TICKS_PER_TURN     2
@@ -94,8 +112,8 @@ enum AzimuthEvent {
 
 enum AzimuthStatus {
     ST_IDLE,
-    ST_GOING,
-    ST_GOING_SLOW,
+    ST_MOVING,
+    ST_APPROACHING,
     ST_HOMING,
     ST_ERROR,
 };
@@ -125,6 +143,10 @@ SoftwareSerial HC12(HC12_TX, HC12_RX); // Create Software Serial Port
 #endif
 SerialCommand sCmd;
 
+#ifdef MOTOR_SHIELD
+Motor motor(0);
+#endif
+
 bool park_on_shutter = false;
 bool home_reached = false;
 bool parking = false;
@@ -139,14 +161,16 @@ AzimuthEvent az_event = EVT_NONE;
 
 
 // Convert two bytes to a uint16_t value (big endian)
-uint16_t bytesToInt(uint8_t *data) {
+uint16_t bytesToInt(uint8_t *data)
+{
     uint16_t value1 = data[1];
     uint16_t value2 = data[0];
     return (value1 & 0xff) | ((value2 << 8) & 0xff00);
 }
 
 // Convert a uint16_t value to bytes (big endian)
-void intToBytes(uint16_t value, uint8_t *data) {
+void intToBytes(uint16_t value, uint8_t *data)
+{
     data[1] = value & 0xff;
     data[0] = (value >> 8) & 0xff;
 }
@@ -173,9 +197,9 @@ void eepromWriteUint16(int address, uint16_t value)
 uint8_t getDirection(uint16_t current, uint16_t target)
 {
     if (target > current)
-        return ((target - current) > ticks_per_turn/2) ? DIR_CCW : DIR_CW;
+        return ((target - current) > ticks_per_turn / 2) ? DIR_CCW : DIR_CW;
 
-    return ((current - target) > ticks_per_turn/2) ? DIR_CW : DIR_CCW;
+    return ((current - target) > ticks_per_turn / 2) ? DIR_CW : DIR_CCW;
 }
 
 // Obtain the distance between two positons
@@ -184,43 +208,51 @@ uint16_t getDistance(uint16_t current, uint16_t target)
     // obtain the absolute value of the difference
     uint16_t diff = (target > current) ?  target - current : current - target;
 
-    if (diff > ticks_per_turn/2)
+    if (diff > ticks_per_turn / 2)
         return ticks_per_turn - diff;
 
     return diff;
 }
 
-inline void moveAzimuth(uint8_t dir)
+inline void moveAzimuth(uint8_t dir, bool slow)
 {
+    digitalWrite(LED_BUILTIN, HIGH);
+#ifdef MOTOR_SHIELD
+    int speed = slow ? 800 : 1023;
+    motor.run(dir == DIR_CW, speed);
+#else
+    digitalWrite(MOTOR_JOG, slow);
     digitalWrite(MOTOR_CW, dir == DIR_CW);
     digitalWrite(MOTOR_CCW, dir != DIR_CW);
+#endif
 }
 
 inline void stopAzimuth()
 {
+    digitalWrite(LED_BUILTIN, LOW);
+#ifdef MOTOR_SHIELD
+    motor.stop();
+#else
     digitalWrite(MOTOR_JOG, LOW);
     digitalWrite(MOTOR_CW, LOW);
     digitalWrite(MOTOR_CCW, LOW);
+#endif
 }
 
-inline void setJog(bool enable)
+float getShutterVBat()
 {
-    digitalWrite(MOTOR_JOG, enable);
-}
-
-float getShutterVBat() {
-    int adc=0;
+    int adc = 0;
 
 #ifdef HAS_SHUTTER
     char buffer[5];
 
     HC12.flush();
-    for (int i=0; i<4; i++) {
+    for (int i = 0; i < 4; i++) {
         HC12.println("vbat");
         delay(100);
 
         if (HC12.read() == 'v') {
-            for (int j=0; j<4; j++) {
+            for (int j = 0; j < 4; j++) {
                 buffer[j] = HC12.read();
             }
 
@@ -235,13 +267,14 @@ float getShutterVBat() {
     return (float)adc * VBAT_FACTOR + VBAT_OFFSET;
 }
 
-ShutterStatus getShutterStatus() {
+ShutterStatus getShutterStatus()
+{
     ShutterStatus st = SS_OPEN;
 
 #ifdef HAS_SHUTTER
     st = SS_ERROR;
     HC12.flush();
-    for (int i=0; i<4; i++) {
+    for (int i = 0; i < 4; i++) {
         HC12.println("stat");
         delay(100);
 
@@ -336,9 +369,11 @@ void cmdStatus(uint8_t *cmd)
     MDAzimuthStatus az_status;
     if (state == ST_IDLE) {
         az_status = AS_IDLE;
-    } else if (state == ST_ERROR) {
+    }
+    else if (state == ST_ERROR) {
         az_status = AS_ERROR;
-    } else {
+    }
+    else {
         if (current_dir == DIR_CW)
             az_status = AS_MOVING_CW;
         else
@@ -347,7 +382,8 @@ void cmdStatus(uint8_t *cmd)
 
     uint8_t sh_status = (uint8_t)getShutterStatus();
     uint8_t resp[] = {START, 9, TO_COMPUTER | STATUS_CMD, sh_status, az_status,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+                     };
 
     intToBytes(current_pos, resp + 5);
     intToBytes(home_pos, resp + 7);
@@ -380,7 +416,7 @@ void cmdVBat(uint8_t *cmd)
 {
     uint8_t resp[] = {START, 4, TO_COMPUTER | VBAT_CMD, 0x00, 0x00, 0x00};
 
-    int vbat = getShutterVBat()*100;
+    int vbat = getShutterVBat() * 100;
     intToBytes(vbat, resp + 3);
 
     sCmd.sendResponse(resp, 6);
@@ -402,37 +438,41 @@ void updateAzimuthFSM()
             parking = false;
             stopAzimuth();
             state = ST_IDLE;
-        } else if (home_reached) {
+        }
+        else if (home_reached) {
             stopAzimuth();
             state = ST_IDLE;
             home_reached = false;
-        } else if (millis() - t0 > AZ_TIMEOUT) {
+        }
+        else if (millis() - t0 > AZ_TIMEOUT) {
             stopAzimuth();
             state = ST_ERROR;
         }
         break;
 
-    case ST_GOING:
+    case ST_MOVING:
         if (az_event == EVT_ABORT) {
             parking = false;
             stopAzimuth();
             state = ST_IDLE;
-        } else if (getDistance(current_pos, target_pos) < AZ_SLOW_RANGE) {
-            moveAzimuth(current_dir);
-            setJog(true);
-            state = ST_GOING_SLOW;
-        } else if (millis() - t0 > AZ_TIMEOUT) {
+        }
+        else if (getDistance(current_pos, target_pos) < AZ_SLOW_RANGE) {
+            moveAzimuth(current_dir, true);
+            state = ST_APPROACHING;
+        }
+        else if (millis() - t0 > AZ_TIMEOUT) {
             stopAzimuth();
             state = ST_ERROR;
         }
         break;
 
-    case ST_GOING_SLOW:
+    case ST_APPROACHING:
         if (az_event == EVT_ABORT) {
             parking = false;
             stopAzimuth();
             state = ST_IDLE;
-        } else if (getDistance(current_pos, target_pos) < AZ_TOLERANCE) {
+        }
+        else if (getDistance(current_pos, target_pos) < AZ_TOLERANCE) {
             stopAzimuth();
 
             // close shutter after parking
@@ -444,7 +484,8 @@ void updateAzimuthFSM()
             }
 
             state = ST_IDLE;
-        } else if (millis() - t0 > AZ_TIMEOUT) {
+        }
+        else if (millis() - t0 > AZ_TIMEOUT) {
             stopAzimuth();
             state = ST_ERROR;
         }
@@ -455,11 +496,12 @@ void updateAzimuthFSM()
         if (az_event == EVT_HOME) {
             t0 = millis();
             state = ST_HOMING;
-            moveAzimuth(current_dir);
-        } else if (az_event == EVT_GOTO) {
+            moveAzimuth(current_dir, false);
+        }
+        else if (az_event == EVT_GOTO) {
             t0 = millis();
-            state = ST_GOING;
-            moveAzimuth(current_dir);
+            state = ST_MOVING;
+            moveAzimuth(current_dir, false);
         }
         break;
     }
@@ -474,21 +516,12 @@ void encoderISR()
             current_pos = ticks_per_turn - 1;
         else
             current_pos--;
-    } else {
+    }
+    else {
         if (current_pos >= ticks_per_turn)
             current_pos = 0;
         else
             current_pos++;
-    }
-
-    // store detected home position
-    if (!digitalRead(HALL_PROBE)) {
-        if (state == ST_HOMING) {
-            home_pos = 0;
-            current_pos = 0;
-            home_reached = true;
-        } else
-            home_pos = current_pos;
     }
 }
 
@@ -508,9 +541,15 @@ void setup()
     sCmd.addCommand(VBAT_CMD, 2, cmdVBat);
 
     pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(HOME_SENSOR, INPUT_PULLUP);
+    pinMode(BUTTON_CW, INPUT_PULLUP);
+    pinMode(BUTTON_CCW, INPUT_PULLUP);
+
+#ifndef MOTOR_SHIELD
     pinMode(MOTOR_JOG, OUTPUT);
     pinMode(MOTOR_CW, OUTPUT);
     pinMode(MOTOR_CCW, OUTPUT);
+#endif
 
     attachInterrupt(digitalPinToInterrupt(ENCODER1), encoderISR, CHANGE);
 
@@ -524,10 +563,53 @@ void setup()
 #endif
 }
 
+// move the motor when the buttons are pressed
+void read_buttons()
+{
+    static int prev_cw_button = 0, prev_ccw_button = 0;
+    int cw_button = digitalRead(BUTTON_CW);
+    int ccw_button = digitalRead(BUTTON_CCW);
+
+    if (cw_button != prev_cw_button) {
+        if (!cw_button) {
+            digitalWrite(LED_BUILTIN, HIGH);
+            motor.run(0, 1023);
+        }
+        else {
+            digitalWrite(LED_BUILTIN, LOW);
+            motor.stop();
+        }
+    }
+    else if (ccw_button != prev_ccw_button) {
+        if (!ccw_button) {
+            digitalWrite(LED_BUILTIN, HIGH);
+            motor.run(1, 1023);
+        }
+        else {
+            digitalWrite(LED_BUILTIN, LOW);
+            motor.stop();
+        }
+    }
+    prev_cw_button = cw_button;
+    prev_ccw_button = ccw_button;
+}
+
 
 void loop()
 {
     sCmd.readSerial();
     updateAzimuthFSM();
+    read_buttons();
     wdt_reset();
+
+    // store detected home position
+    if (!digitalRead(HOME_SENSOR)) {
+        if (state == ST_HOMING) {
+            home_pos = 0;
+            current_pos = 0;
+            home_reached = true;
+        }
+        else
+            home_pos = current_pos;
+    }
 }

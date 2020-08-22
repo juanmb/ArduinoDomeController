@@ -21,7 +21,7 @@ uint8_t SerialCommand::getCRC(uint8_t *cmd, uint8_t length)
 {
     char crc = 0;
 
-    for (int i=1; i<=length; i++) {
+    for (int i = 1; i <= length; i++) {
         crc -= cmd[i];
     }
     return crc;
@@ -88,7 +88,7 @@ void SerialCommand::sendResponse(uint8_t *cmd, uint8_t length)
 {
     cmd[length - 1] = getCRC(cmd, length - 2);
 
-    for (int i=0; i<length; i++) {
+    for (int i = 0; i < length; i++) {
         Serial.write(cmd[i]);
     }
 }
