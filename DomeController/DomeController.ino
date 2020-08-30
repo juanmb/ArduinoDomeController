@@ -33,30 +33,32 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 #include "serial_command.h"
 
 
-// configuration
-#define HAS_SHUTTER   // Comment if the shutter controller is not available
-//#define MOTOR_SHIELD    // Uncomment if you use a Monster Motor Shield
-#define AZ_TOLERANCE    4       // Azimuth target tolerance in encoder ticks
-#define AZ_SLOW_RANGE   16      //
+// Configuration
+#define HAS_SHUTTER     // Uncomment if the shutter controller is available
+//#define MOTOR_SHIELD  // Uncomment if the motor driver is a Monster Motor Shield
+//#define USE_BUTTONS   // Uncomment if you want to move the dome with push buttons
+
 #define AZ_TIMEOUT      30000   // Azimuth movement timeout (in ms)
+#define AZ_TOLERANCE    4      	// Azimuth target tolerance in encoder ticks
+#define AZ_SLOW_RANGE   8       // The motor will run at slower speed when the
+                                // dome is at this number of ticks from the target
 
 // pin definitions
 #define ENCODER1 2      // Encoder
 #define ENCODER2 3      // Encoder
-#define HOME_SENSOR 10  // Home sensor
-#define BUTTON_CW   11  // CW button
-#define BUTTON_CCW  12  // CCW button
+#define HOME_SENSOR 10  // Home sensor (active low)
+#define BUTTON_CW   11  // CW movement button (active low)
+#define BUTTON_CCW  12  // CCW movement button (Active low)
 
 #ifdef HAS_SHUTTER
 #ifdef MOTOR_SHIELD
-#error "MOTOR_SHIELD and HAS_SHUTTER cannot be defined at the same time"
+#error "HAS_SHUTTER and MOTOR_SHIELD cannot be defined at the same time"
 #endif
 
 // pins of HC12 module (serial radio transceiver)
 #define HC12_RX 4       // Receive Pin on HC12
 #define HC12_TX 5       // Transmit Pin on HC12
 #endif
-
 
 // motor pins (if not using the Monster Motor Shield)
 #ifndef MOTOR_SHIELD
@@ -139,8 +141,10 @@ enum ShutterStatus {
 
 
 #ifdef HAS_SHUTTER
-SoftwareSerial HC12(HC12_TX, HC12_RX); // Create Software Serial Port
+// Create a Software Serial Port to communicate with the shutter controller
+SoftwareSerial HC12(HC12_TX, HC12_RX);
 #endif
+
 SerialCommand sCmd;
 
 #ifdef MOTOR_SHIELD
@@ -518,7 +522,7 @@ void encoderISR()
             current_pos--;
     }
     else {
-        if (current_pos >= ticks_per_turn)
+        if (current_pos >= ticks_per_turn - 1)
             current_pos = 0;
         else
             current_pos++;
@@ -558,6 +562,7 @@ void setup()
     ticks_per_turn = eepromReadUint16(ADDR_TICKS_PER_TURN);
 
     Serial.begin(19200);
+
 #ifdef HAS_SHUTTER
     HC12.begin(9600);   // Open serial port to HC12
 #endif
@@ -567,27 +572,27 @@ void setup()
 void read_buttons()
 {
     static int prev_cw_button = 0, prev_ccw_button = 0;
-    int cw_button = digitalRead(BUTTON_CW);
-    int ccw_button = digitalRead(BUTTON_CCW);
+    int cw_button = !digitalRead(BUTTON_CW);
+    int ccw_button = !digitalRead(BUTTON_CCW);
 
     if (cw_button != prev_cw_button) {
-        if (!cw_button) {
+        if (cw_button) {
             digitalWrite(LED_BUILTIN, HIGH);
-            motor.run(0, 1023);
+	    moveAzimuth(DIR_CW, false);
         }
         else {
             digitalWrite(LED_BUILTIN, LOW);
-            motor.stop();
+	    stopAzimuth();
         }
     }
     else if (ccw_button != prev_ccw_button) {
-        if (!ccw_button) {
+        if (ccw_button) {
             digitalWrite(LED_BUILTIN, HIGH);
-            motor.run(1, 1023);
+	    moveAzimuth(DIR_CCW, false);
         }
         else {
             digitalWrite(LED_BUILTIN, LOW);
-            motor.stop();
+	    stopAzimuth();
         }
     }
     prev_cw_button = cw_button;
@@ -599,7 +604,9 @@ void loop()
 {
     sCmd.readSerial();
     updateAzimuthFSM();
+#ifdef USE_BUTTONS
     read_buttons();
+#endif
     wdt_reset();
 
     // store detected home position
